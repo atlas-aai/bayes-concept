@@ -1,0 +1,175 @@
+---
+title: "Bayesian Psychometrics for Dynamic Learning Maps: A Proof of Concept"
+shorttitle: "Bayesian Modeling for DLM"
+subtitle: "Technical Report #19-02"
+date: "`r format(Sys.Date(), '%B %Y')`"
+output: ratlas::techreport_pdf
+bibliography: ["bib/refs.bib", "bib/packages.bib"]
+biblio-style: apa
+biblatexoptions:
+  - sortcites
+csl: csl/apa.csl
+link-citations: yes
+lot: true
+lof: true
+subparagraph: yes
+mainfont: Palatino LT Std
+fontsize: 11pt
+acknowledgements: >
+  `r if (knitr::is_latex_output()) jayhawkdown::inc("front-matter/preface.Rmd")`
+---
+
+```{r setup, include=FALSE}
+needed_packages <- c("ratlas", "knitr", "english", "kableExtra", "tidyverse",
+                     "rstan", "loo", "tidybayes", "here")
+load_packages <- function(x) {
+  if (!(x %in% installed.packages())) {
+    install.packages(x, repos = "https://cran.rstudio.com/")
+  }
+  
+  suppressPackageStartupMessages(require(x, character.only = TRUE))
+}
+vapply(needed_packages, load_packages, logical(1))
+
+extrafont::loadfonts(quiet = TRUE)
+
+options(knitr.kable.NA = "")
+```
+
+```{r functions}
+ggsave2 <- function(plot, filename, width = 10, dir = "h", ...) {
+  asp <- ifelse(dir == "h", 0.618, 1.618)
+  height <- width * asp
+  
+  ggplot2::ggsave(filename, plot, width = width, height = height, units = "in",
+                  dpi = "retina", ...)
+  invisible(plot)
+}
+```
+
+
+# Executive Summary {-}
+
+Placeholder text.
+
+# Implications for the Field {-}
+
+Placeholder text.
+
+\newpage
+
+# Purpose of the Report
+
+The Dynamic Learning Maps^&reg;^ (DLM^&reg;^) Alternate Assessment System utilizes diagnostic classification models (DCMs) to scale and score assessments in English language arts (ELA), mathematics, and science. DCMs are able to provide fine-grained and actionable scores for a set of assessed skills or attributes [@bradshaw_dcm]. However, because this class of models is relatively new to operational use, many psychometric properties require further investigation to support the use of the assessments. One key feature that is not well defined in the literature is how best to asses the model fit of DCMs [@rupp_dcm]. In this report, the limitations of the current model fit methodology are discussed, and proof of concept is presented for using Bayesian estimation and posterior predictive model checks for the evaluation of model fit for DCMs.
+
+# Limitations of the Current Approach
+
+The DLM assessments currently estimate each linkage level as a separate latent class analysis using an expectation-maximization algorithm [@bartholomew_lca; @dlm_tech_1516_im]. Prior work on this modeling approach has demonstrated that although this methodology is able to estimate and score the assessment, it is unable to adequately address issues of psychometric concern, primarily those related to model fit [@rupp_dcm]. Under the current modeling approach, evaluation of model fit relies primarily on univariate item tests, meaning that higher order evaluations of model fit using multiple items are not readily calculable. Further, the indices that are able to be computed rely on $\chi^2$ tests that are known to be asymptotically incorrect [@maydeu_2005; @maydeu_2006].
+
+Due to these concerns, this document investigates a Bayesian approach to the estimation of the latent class model. This approach allows for the estimation of alternative methods for the evaluation of model fit through posterior predictive model checking.
+
+# Defining the Bayesian Model
+
+The general form of DCMs can be seen in equation \@ref(eq:dcm), where the probability of respondent $j$ providing a given item response can be modeled as:
+
+\begin{equation}
+  P(\text{X}_j = \text{x}_j) = \sum_{c=1}^C\nu_c\prod_{i=1}^{I}\pi_{ic}^{x_{ij}}(1 - \pi_{ic})^{1-x_{ij}}
+  (\#eq:dcm)
+\end{equation}
+
+In equation \@ref(eq:dcm), $\pi_{ic}$ is the probability of a respondent in class $c$ providing a correct response to item $i$, and $x_{ij}$ is the observed response (i.e., 0, 1) of respondent $j$ to item $i$. Thus, $\pi_{ic}^{x_{ij}}(1 - \pi_{ic})^{1-x_{ij}}$ represents the probability of a respondent in class $c$ providing the observed response to item $i$. These probabilities are then multipled across all items, giving the probability of a respondent in class $c$ providing a the observed response pattern. Finally, this probability is multiple by $\nu_c$, which is the base rate probability that any given respondent belong to class $c$. Thus, this product represents the probability that a given respondent is in class $c$ and provided the observed response pattern.
+
+For DCMs with binary attributes (e.g., master and non-master), there are $2^A$ mastery profiles that a respondent could be classified into. Because DLM uses a simplified latent class model, there is only one attribute per model, and thus two classes.
+
+Where different classes of DCMs differ is in how $\pi_{ic}$ is defined. For example, the log-linear cognitive diagnosis model [LCDM; @lcdm] defines $\pi_{ic}$ similar to generalized linear models with a logit link function. Specifically, $\pi_{ic}$ is defined as seen in equation \@ref(eq:meas-lcdm), where $\alpha_c$ is a binary indicator of the mastery status for a respondent in class $c$.
+
+\begin{equation}
+  \pi_{ic} = P(\text{X}_{ic}=1\ |\ \alpha_c) = \frac{\exp(\lambda_{i,0} + \lambda_{i,1,1}\alpha_c)}{1 + \exp(\lambda_{i,0} + \lambda_{i,1,1}\alpha_c)}
+  (\#eq:meas-lcdm)
+\end{equation}
+
+When using this notation introduced by @rupp_dcm, the $\lambda$ subscripts follow the order of: item, effect, attribute. That is, the first subscript identifies the item for the parameter (noted as $i$). The second subscript denotes the type of effect. Because this discussion is limited to single attribute models, there are only two types of effects where 0 identifies an intercept and 1 a main effect. In models with multiple attributes, there may be additional effects for two-, three-, or *A*-way interactions. Finally, the last element of the subscript identifies the attribute(s). Again, as these are single attribute models, this element is either non-existent (for intercept terms where no attribute is involved) or 1 (for all other effects). It is included here only for consistency with the notation in @rupp_dcm.
+
+When implemented for the DLM assessments, equation \@ref(eq:meas-lcdm) is modified slightly in order to include both attribute- and item-level effects, similar to multilevel models:
+
+\begin{equation}
+  \pi_{ic} = P(\text{X}_{ic}=1\ |\ \alpha_c) = \frac{\exp[\lambda_{0} + b_{i,0} + (\lambda_{1,1} + b_{i,1,1})\alpha_c]}{1 + \exp[\lambda_{0} + b_{i,0} + (\lambda_{1,1} + b_{i,1,1})\alpha_c]}
+  (\#eq:dlm-lcdm)
+\end{equation}
+
+Equation \@ref(eq:dlm-lcdm) shows the similarity to multilevel models. In this model, $\lambda_0$ and $\lambda_{1,1}$ represent the attribute level intercept and main effect respectively. These are akin to the average intercept and main effect for all items (the fixed effects in the multilevel model literature). In addition to the attribute level parameters, there are also item-level intercepts ($b_{i,0}$) and main effects ($b_{i,1,1}$). These parameters represent the deviation from the attribute level effect for each item. Thus, the full intercept for item one would be calculated as $\lambda_0 + b_{1,0}$. This is similar to the estimation of random intercepts and slopes for each item [@stroup_glmm]. The difference between the proposed model and multilevel models is the treatment of the variance of these item-level parameters. In multilevel models, the variance of these effects would be estimated. However, for this model, the variance of these effects is fixed to pre-specified values.
+
+If the item-level parameters are constrained to be 0, then all items will have parameters equal to the attribute-level parameter (i.e., all of the $b_{i,0}$ and $b_{i,1,1}$ parameters would be zero). This is mathematically equivalent to the fungible model that is currently used as the operational model for DLM [@dlm_tech_1516_im]. Alternatively, the item-level parameters can be allowed to vary freely with no constraints (i.e., a non-fungible model). Finally, a non-flat prior can be placed on the item-level parameters, such that the parameters are not constrained to be 0, but also not allowed to vary completely freely either.
+
+## Prior Specification for Attribute-Level Effects
+
+In equation \@ref(eq:dlm-lcdm), there are two attribute-level effects that require prior specifications. The first attribute-level effect is $\lambda_{0}$,  which represents the average intercept across all items. Thus, this parameter also represents the log-odds (due to the logit link function) of a non-master providing a correct response to an average item. For this parameter, a $\mathcal{N}(\mu = 0,\ \sigma=2)$ distribution. This prior distribution is chosen as 99% of the distribution encompasses the plausible values for this parameter. Specifically, the middle 99% of the distribution consists of the log-odds range -5.15 to 5.15, which covers nearly all of the probability scale with other parameters are equal to zero, as seen in Figure \@ref(fig:log-odds).
+
+```{r log-odds, fig.cap = "Log-odds to probability conversion."}
+tibble(x = seq(-5, 5, by = 0.01)) %>%
+  mutate(y = 1 / (1 + exp(-x))) %>%
+  ggplot(aes(x = x, y = y)) +
+    geom_line() +
+    scale_x_continuous(breaks = seq(-8, 8, by = 2)) +
+    labs(x = "Log-odds", y = "Probability") +
+    theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+The main effect parameters in the LCDM are constrained to be positive, thus ensuring monotonicity in the model [e.g., masters always have a higher probability of providing a correct response; @lcdm]. Thus, the attribute-level main effect for DLM models, $\lambda_{1,1}$ uses a lognormal prior, $\text{Lognormal}(\mu = 0, \sigma = 1)$. Similar to the attribute-level intercept, this distribution was chosen as 99% of the distribution covers the range of plausible values. Specifically, the lower 99% of this distribution covers the log-odds range of 0 to 10.24. An upper limit of approximately 10 was desired as a main effect of 10 would allow for an estimated probability of providing a correct response near 1.0 in the extreme case where the intercept was -5 (the lower tail of the attribute-level intercept prior distribution).
+
+The distributions for these parameters are visualized in Figure \@ref(fig:attr-prior-dist).
+
+```{r attr-prior-dist, fig.cap = "Prior distributions for attribute-level effects."}
+bind_rows(
+  tibble(.variable = "lambda[0]", x = seq(-10, 10, by = 0.01)) %>%
+    mutate(y = dnorm(x, mean = 0, sd = 2)),
+  tibble(.variable = "lambda[list(1,1)]", x = seq(0, 10, by = 0.01)) %>%
+    mutate(y = dlnorm(x, meanlog = 0, sdlog = 1))
+) %>%
+  ggplot(aes(x = x, y = y)) +
+    facet_wrap(~ .variable, nrow = 1, scales = "free", labeller = label_parsed) +
+    geom_line() +
+    labs(x = "Parameter Value", y = "Density") +
+    theme_atlas_ms(strip_text_size = 20) -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+## Prior Specification for Item-Level Effects
+
+The prior distributions for the item-level effects, $b_{i,0}$ and $b_{i,1,1}$, are determined by the type of model that is being estimated. For this proof of concept, three models are considered: fungible, non-fungible, and partial equivalency.
+
+In the fungible model, it is assumed that all items measuring the attribute have the same item parameters. That is, the item-level effects are equivalent to the attribute-level effect. Thus, the item-level deviations from the attribute-level effects are all equal to 0. Conceptually, this means using a $\mathcal{N}(\mu=0,\ \sigma=0)$ prior for all $b_{i,0}$ and $b_{i,1,1}$ terms. In practice, to increase computational efficiency, these terms are left out of the model, and only the attribute-level effects are estimated.
+
+The non-fungible model
+
+## Prior Specification for Class-Level Effects
+
+Placeholder text.
+
+
+\newpage
+
+# References {-}
+
+```{r write-packages, include = FALSE}
+if (!file.exists("bib/packages.bib")) file.create("bib/packages.bib")
+suppressWarnings(
+  knitr::write_bib(c(.packages()), "bib/packages.bib")
+)
+```
+
+\printbibliography[heading=none]
+
+\setlength{\parindent}{15pt}
+\setlength{\leftskip}{0pt}

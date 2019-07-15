@@ -1,0 +1,3 @@
+book_filename: "Bayes_Proof_Concept"
+output_dir: _report
+delete_merged_file: true
