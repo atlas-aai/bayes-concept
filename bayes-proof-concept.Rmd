@@ -3,6 +3,8 @@ title: "Bayesian Psychometrics for Dynamic Learning Maps: A Proof of Concept"
 shorttitle: "Bayesian Modeling for DLM"
 subtitle: "Technical Report #19-02"
 date: "`r format(Sys.Date(), '%B %Y')`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
 output: ratlas::techreport_pdf
 bibliography: ["bib/refs.bib", "bib/packages.bib"]
 biblio-style: apa
