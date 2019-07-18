@@ -23,7 +23,7 @@ acknowledgements: >
 
 ```{r setup, include=FALSE}
 needed_packages <- c("ratlas", "knitr", "english", "kableExtra", "tidyverse",
-                     "rstan", "loo", "tidybayes", "here")
+                     "rstan", "loo", "tidybayes", "here", "glue", "fs")
 load_packages <- function(x) {
   if (!(x %in% installed.packages())) {
     install.packages(x, repos = "https://cran.rstudio.com/")
