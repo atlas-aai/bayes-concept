@@ -4,3 +4,4 @@
 .Ruserdata
 *.log
 _report/*
+_bookdown_files/*
