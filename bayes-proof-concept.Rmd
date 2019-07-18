@@ -39,7 +39,24 @@ options(knitr.kable.NA = "")
 ```
 
 ```{r functions}
-ggsave2 <- function(plot, filename, width = 10, dir = "h", ...) {
+logit <- function(x) {
+  log(x / (1 - x))
+}
+inv_logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+trunc_sample <- function(func, n, lb = -Inf, ub = Inf, ...) {
+  full_sample <- func(n = n, ...)
+  trunc_sample <- full_sample[between(full_sample, lb, ub)]
+  
+  while(length(trunc_sample) < n) {
+    full_sample <- func(n = n, ...)
+    trunc_sample <- c(trunc_sample, full_sample[between(full_sample, lb, ub)])
+  }
+  
+  sample(trunc_sample, size = n, replace = FALSE)
+}
+ggsave2 <- function(plot, filename, width = 8, dir = "h", ...) {
   asp <- ifelse(dir == "h", 0.618, 1.618)
   height <- width * asp
   
