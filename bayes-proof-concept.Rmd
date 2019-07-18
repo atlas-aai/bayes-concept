@@ -120,7 +120,7 @@ Equation \@ref(eq:dlm-lcdm) shows the similarity to multilevel models. In this m
 
 If the item-level parameters are constrained to be 0, then all items will have parameters equal to the attribute-level parameter (i.e., all of the $b_{i,0}$ and $b_{i,1,1}$ parameters would be zero). This is mathematically equivalent to the fungible model that is currently used as the operational model for DLM [@dlm_tech_1516_im]. Alternatively, the item-level parameters can be allowed to vary freely with no constraints (i.e., a non-fungible model). Finally, a non-flat prior can be placed on the item-level parameters, such that the parameters are not constrained to be 0, but also not allowed to vary completely freely either.
 
-## Prior Specification for Attribute-Level Effects
+## Prior Specification for Attribute-Level Effects {#attr-priors}
 
 In equation \@ref(eq:dlm-lcdm), there are two attribute-level effects that require prior specifications. The first attribute-level effect is $\lambda_{0}$,  which represents the average intercept across all items. Thus, this parameter also represents the log-odds (due to the logit link function) of a non-master providing a correct response to an average item. For this parameter, a $\mathcal{N}(\mu = 0,\ \sigma=2)$ distribution. This prior distribution is chosen as 99% of the distribution encompasses the plausible values for this parameter. Specifically, the middle 99% of the distribution consists of the log-odds range -5.15 to 5.15, which covers nearly all of the probability scale with other parameters are equal to zero, as seen in Figure \@ref(fig:log-odds).
 
@@ -164,17 +164,389 @@ plot %>%
 include_graphics(fig_path(".pdf"))
 ```
 
-## Prior Specification for Item-Level Effects
+## Prior Specification for Item-Level Effects {#item-priors}
 
 The prior distributions for the item-level effects, $b_{i,0}$ and $b_{i,1,1}$, are determined by the type of model that is being estimated. For this proof of concept, three models are considered: fungible, non-fungible, and partial equivalency.
 
 In the fungible model, it is assumed that all items measuring the attribute have the same item parameters. That is, the item-level effects are equivalent to the attribute-level effect. Thus, the item-level deviations from the attribute-level effects are all equal to 0. Conceptually, this means using a $\mathcal{N}(\mu=0,\ \sigma=0)$ prior for all $b_{i,0}$ and $b_{i,1,1}$ terms. In practice, to increase computational efficiency, these terms are left out of the model, and only the attribute-level effects are estimated.
 
-The non-fungible model
+In contrast, the non-fungible model assume that the item parameters are independent of one another. In other words, the parameters for one item do not dictate the parameters of other items. Conceptually, this means that the item-level deviations from the attribute-level effects are unconstrained, and thus an infinite uniform prior, $\mathcal{U}(-\infty,\ +\infty)$, would be used for all $b_{i,0}$ and $b_{i,1,1}$ terms. In practice, it is more efficient to directly estimate individual parameters for each item, rather than attribute-level effects with unconstrained item-level deviations. Therefore, this model more closely resembles a true LCDM in equation \@ref(eq:meas-lcdm), with the $\lambda_{i,0}$ and $\lambda_{i,1,1}$ parameters using the prior distributions described for the [attribute-level priors](#attr-priors).
 
-## Prior Specification for Class-Level Effects
+The partial equivalency model represents a compromise between the extremes of the fungible and non-fungible models. In this model, item-level parameters are not entirely independent, but are also not constrained to be equivalent. Instead, the item-levels are assumed to come from some distribution of deviations. The smaller the variance of the distribution, the more fungible the items are. Conversely, a large variance would correspond to less fungibility. Conceptually and in practice, this model is similar to multilevel models, the item-level deviations use a hierarchical normal prior, $\mathcal{N}(\mu=0,\ \sigma)$, where $\sigma$ is an estimated parameter in the model. The $\sigma$ parameter uses a half-Student's *t*-distribution with $df = 3$ (Figure \@ref(fig:sigma-prior)). This prior ensures that the variance is always positive, and also allows for larger variances than a normal distribution would. However, the variances are also constrained to reasonable values (i.e., less than ~5).
 
-Placeholder text.
+```{r sigma-prior, fig.cap = "Prior distribution for hierarchical variance prior."}
+ggplot(data = tibble(x = c(0, 6)), aes(x = x)) +
+  stat_function(fun = dt, n = 500, args = list(df = 3)) +
+  geom_segment(x = 0, y = 0, xend = 0, yend = dt(0, df = 3)) +
+  labs(x = "Parameter Value", y = "Density") +
+  theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+## Prior Specification for Class-Level Parameters {#strc-priors}
+
+The last parameter that requires a prior is the structural parameter in equation \@ref(eq:dcm), $\nu_c$. This parameter defines the base rate of inclusion for each class. As such, $\nu$ is constrained such that all elements sum to one (i.e., there are no non-class respondents). Because this discussion is limited to models with a single binary attribute, there are only two classes, and therefore two elements of $\nu$. No assumptions are made about the base rate of mastery for attributes; therefore, a uniform Dirichlet prior, $\text{Dir}(1)$, is used for the prior distribution. As there only two classes, this is equivalent to using a uniform Beta distribution, $\text{Beta}(\alpha=1,\ \beta=1)$, for $\nu_1$ and then calculating $\nu_2$ as $\nu_2 = 1 - \nu_1$.
+
+# The Bayesian Framework in Practice
+
+In order to demonstrate the utility and benefits of using the Bayesian model definition and estimation process, a single simulated data set was generated. This data set was then used to walk through each step of the Bayesian model fit process, from model estimation to model evaluations and comparisons. All analyses were performed in *R* version `r getRversion()` [@R-base].
+
+## Simulated Data
+
+```{r example-data, include = FALSE, cache = TRUE}
+set.seed(9416)
+num_stu <- 11000
+att_mastery <- 0.6
+ye_pct <- 0.8
+rt_pct <- 0.1
+
+# simulate items
+items <- tibble(testlet_id = 101:104,
+       window = rep(c("IE", "SP"), each = 2)) %>%
+  mutate(num_item = sample(3:5, n(), replace = TRUE)) %>%
+  uncount(weights = num_item, .id = "testlet_item_id") %>%
+  rowid_to_column(var = "item_id") %>%
+  mutate(attr_intercept = runif(1, -2.25, -1.00),
+         attr_maineffect = runif(1, 1.00, 4.50),
+         item_intercept = rnorm(n(), mean = 0, sd = 0.5),
+         item_maineffect = trunc_sample(rnorm, n = n(),
+                                        lb = -1 * unique(attr_maineffect),
+                                        mean = 0, sd = 0.5),
+         intercept = attr_intercept + item_intercept,
+         maineffect = attr_maineffect + item_maineffect,
+         nm_prob = map_dbl(intercept, inv_logit),
+         ms_prob = map_dbl(intercept + maineffect, inv_logit))  %>%
+  write_csv(here("data", "item-parameters.csv"))
+
+all_response <- tibble(testlet_id = c("103", "104", "101,103", "101,104",
+                                      "102,103", "102,104", "101,102,103",
+                                      "101,102,104")) %>%
+  mutate(testlets = str_count(testlet_id, ","),
+         weight = case_when(testlets == 0 ~ 0.5 * ye_pct,
+                            testlets == 1 ~ ((1 - rt_pct) * (1 - ye_pct)) / 4,
+                            testlets == 2 ~ (rt_pct * (1 - ye_pct)) / 2)) %>%
+  select(-testlets) %>%
+  sample_n(size = num_stu, replace = TRUE, weight = weight) %>%
+  select(-weight) %>%
+  rowid_to_column(var = "stu_id") %>%
+  mutate(mastery = sample(c(0L, 1L), n(), replace = TRUE,
+                          prob = c(1 - att_mastery, att_mastery))) %>%
+  separate_rows(testlet_id, convert = TRUE) %>%
+  left_join(
+    items %>%
+      select(testlet_id,  item_id, nm_prob, ms_prob),
+    by = "testlet_id"
+  ) %>%
+  mutate(prob_correct = (mastery * ms_prob) + ((1 - mastery) * nm_prob),
+         rand = runif(n(), 0, 1),
+         score = case_when(rand <= prob_correct ~ 1L, TRUE ~ 0L)) %>%
+  write_rds(here("data", "all_response.rds"))
+
+mastery <- distinct(all_response, stu_id, mastery) %>%
+  write_csv(here("data", "student-parameters.csv"))
+
+# Format data for Stan
+response_matrix <- all_response %>%
+  select(stu_id, item_id, score) %>%
+  arrange(stu_id, item_id)
+ragged_array <-  response_matrix %>%
+  rowid_to_column() %>%
+  group_by(stu_id) %>%
+  summarize(start = min(rowid), num = n())
+stan_data = list(
+  I = nrow(items),
+  J = num_stu,
+  N = nrow(response_matrix),
+  ii = response_matrix$item_id,
+  jj = response_matrix$stu_id,
+  y = response_matrix$score,
+  s = ragged_array$start,
+  l = ragged_array$num
+)
+```
+
+When simulating the example data set, the data was structured similar to the DLM assessments. That is, items were grouped together into testlets of three to five items, and testlets were assigned to either the instructionally embedded or spring testing window. For more information on these testing windows and how content is assigned in practice, see Chapter 3 and Chapter 4 of @dlm_tech_1415_im. Item parameters were simulated according to the partial equivalency model defined in equation \@ref(eq:dlm-lcdm). The attribute-level intercept, $\lambda_0$ was drawn from a $\mathcal{U}(-2.25, -1.00)$ distribution, and the attribute-level main effect, $\lambda_{1,1}$ from a $\mathcal{U}(1.00, 4.50)$. The item-level deviations $b_{i,0}$ and $b_{i,1,1}$ were drawn from a $\mathcal{N}(\mu=0,\ \sigma = 0.5)$ distribution. This resulted in total item intercepts and main effects consistent with those reported for the DLM assessments [see Chapter 5 of @dlm_tech_1516_im]. The true parameter values for each testlet and item that were used to simulate the data can be seen in Table \@ref(tab:true-item-param).
+
+```{r true-item-param}
+items %>%
+  select(-testlet_item_id, -nm_prob, -ms_prob) %>%
+  mutate_if(is.double, ~sprintf("%0.2f", .)) %>%
+  kable(align = c("c", "c", "c", rep("r", 4), "c", "c"), booktabs = TRUE,
+        linesep = "", escape = FALSE, caption = "True Item Parameters",
+        col.names = c("Item", "Testlet", "Window",
+                      "$\\pmb{\\lambda_0}$",
+                      "$\\pmb{\\lambda_{1,1}}$", "$\\pmb{b_{i,0}}$",
+                      "$\\pmb{b_{i,1,1}}$", "$\\pmb{\\lambda_0 + b_{i,0}}$",
+                      "$\\pmb{\\lambda_{1,1} + b_{i,1,1}}$")) %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
+  footnote(general = "IE = instructionally embedded; SP = spring.",
+           footnote_as_chunk = TRUE)
+```
+
+To mimic the DLM test structure, students were pseudo-randomly assigned a combination of the simulated testlets. First, students were randomly assigned to test on either both instructionally embedded and spring testlets, or only spring. Consistent with the DLM population, students had an `r str_extract(indefinite(ye_pct * 100), "\\w+")` `r ye_pct * 100`% chance of being assigned only spring testlets, and `r str_extract(indefinite((1 - ye_pct) * 100), "\\w+")` `r (1 - ye_pct) * 100`% chance of being assigned both instructionally embedded and spring assessments in the simulation. When assigning spring assessments, students were randomly assigned only one testlet. For students who were assigned instructionally embedded assessments, there was `r str_extract(indefinite((1 - rt_pct) * 100), "\\w+")` `r (1 - rt_pct) * 100`% chance of taking only one testlet, and `r str_extract(indefinite(rt_pct * 100), "\\w+")` `r rt_pct * 100`% chance of taking both testlets. This is consistent with the reported usage of the instructionally embedded assessment window [@ie_usage]. The resulting probabilities for each possible combination of assigned testlets can be seen in Table \@ref(tab:testlet-prob), along with the total number of students actually simulated to have that combination. In total `r prettyNum(num_stu, big.mark = ",")` students were simulated, consistent with the total number of students that test on a single attribute in a given year.
+
+```{r testlet-prob}
+tibble(testlet_id = c("103", "104", "101,103", "101,104", "102,103", "102,104",
+                      "101,102,103", "101,102,104")) %>%
+  mutate(testlets = str_count(testlet_id, ","),
+         weight = case_when(testlets == 0 ~ 0.5 * ye_pct,
+                            testlets == 1 ~ ((1 - rt_pct) * (1 - ye_pct)) / 4,
+                            testlets == 2 ~ (rt_pct * (1 - ye_pct)) / 2)) %>%
+  select(-testlets) %>%
+  left_join(
+    all_response %>%
+      select(stu_id, testlet_id) %>%
+      group_by(stu_id) %>%
+      summarize(testlet_id = paste(sort(unique(testlet_id)), collapse = ",")) %>%
+      count(testlet_id),
+    by = "testlet_id"
+  ) %>%
+  mutate(testlet_id = str_replace_all(testlet_id, ",", ", "),
+         weight = sprintf("%0.3f", weight),
+         n = prettyNum(n, big.mark = ",")) %>%
+  kable(align = c("c", "c", "r"), booktabs = TRUE, linesep = "", escape = FALSE,
+        col.names = c("Testlet Combination", "Probability", "\\textit{n}"),
+        caption = "Number of Simulated Students Assigned to Each Testlet Combination") %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
+  row_spec(0, bold = TRUE, align = "c")
+```
+
+## Model Estimation {#estimate}
+
+```{r estimate-models, dependson = "example-data", cache = TRUE, include = FALSE}
+chains <- 4
+iter <- 2000
+warmup <- 1000
+
+set.seed(1992)
+fung_init <- map(seq_len(chains), function(x, num) {
+  list(
+    mean_intercept = runif(1, -2.25, -1.00),
+    mean_maineffect = runif(1, 1.00, 4.50)
+  )
+})
+pteq_init <- map(seq_len(chains), function(x, num) {
+  list(
+    mean_intercept = runif(1, -2.25, -1.00),
+    mean_maineffect = runif(1, 1.00, 4.50),
+    intercept_dev = runif(num, -0.5, 0.5),
+    maineffect_dev = runif(num, -0.5, 0.5)
+  )
+}, num = nrow(items))
+nfng_init <- map(seq_len(chains), function(x, num) {
+  list(
+    intercept = runif(num, -2.25, -1.00),
+    maineffect = runif(num, 1.00, 4.50)
+  )
+}, num = nrow(items))
+
+if (file_exists(here("data", "estimated-models", "fung.rds"))) {
+  fung <- read_rds(here("data", "estimated-models", "fung.rds"))
+} else {
+  fung <- stan(here("Stan", "lca_fungible.stan"), data = stan_data,
+             init = fung_init, chains = chains, iter = iter, warmup = warmup,
+             cores = chains, refresh = 0, seed = 924,
+             control = list(adapt_delta = 0.99, max_treedepth = 15))
+  write_rds(fung, here("data", "estimated-models", "fung.rds"), compress = "gz")
+}
+
+if (file_exists(here("data", "estimated-models", "pteq.rds"))) {
+  pteq <- read_rds(here("data", "estimated-models", "pteq.rds"))
+} else {
+  pteq <- stan(here("Stan", "lca_parteqest.stan"), data = stan_data,
+             init = pteq_init, chains = chains, iter = iter, warmup = warmup,
+             cores = chains, refresh = 0, seed = 924,
+             control = list(adapt_delta = 0.99, max_treedepth = 15))
+  write_rds(pteq, here("data", "estimated-models", "pteq.rds"), compress = "gz")
+}
+
+if (file_exists(here("data", "estimated-models", "nfng.rds"))) {
+  nfng <- read_rds(here("data", "estimated-models", "nfng.rds"))
+} else {
+  nfng <- stan(here("Stan", "lca_nonfungible.stan"), data = stan_data,
+             init = nfng_init, chains = chains, iter = iter, warmup = warmup,
+             cores = chains, refresh = 0, seed = 924,
+             control = list(adapt_delta = 0.99, max_treedepth = 15))
+  write_rds(nfng, here("data", "estimated-models", "nfng.rds"), compress = "gz")
+}
+```
+
+The models are estimated in *R* using the **rstan** package interface [@R-rstan] to *Stan* [@stan], which utilizes the No-U-Turn sampler [for a detailed explanation of the approach see @nuts]. The models were estimated with `r words(chains)` chains, each with `r prettyNum(iter, big.mark = ",")` iterations. The first `r prettyNum(warmup, big.mark = ",")` iterations of each chain were discarded for warm-up, leaving a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` retained iterations that make up the posterior distributions. There are also several settings specific to the No-U-Turn Sampler [@nuts] used by *Stan*. First, the adaptive threshold was set to 0.99 to avoid divergent transitions [@betancourt_diverge]. Secondly, the maximum tree depth, which determines how far the algorithm can go before making a U-Turn [@betancourt_rstan], was set to 15. These, are both more conservative than the values suggested by the @stan_user, and the implications of these setting are discussed in the following sections.
+
+The *Stan* code for all models can be found in the [online repository for this report](https://github.com/atlas-aai/bayes-concept).
+
+### Sampler Diagnostics
+
+After estimating the model, before the parameters can be analyzed and inferences can be made, the model is checked to ensure the estimation process completed in an appropriate manner. This diagnostic information is critical to Markov Chain Monte Carlo (MCMC) estimation, as without proper estimation, no valid inferences can be made. Checks include evaluating convergence, efficiency of the sampler, and parameter recovery. Each are described in detail below using the estimated partial equivalency model as an example, as this was the true data generating model.
+
+#### Convergence
+
+A check of convergence evaluates whether the MCMC chain successfully found the high density area of the posterior distribution and stayed there. When multiple chains are estimated, this can be checked by verifying that the estimates from each chain end up in the same parameter space. For a single chain, this is checked by verifying that the parameter is sampled from roughly the same area at the beginning of the chain (after warm-up) as it is at the end of the chain. This is commonly assessed through trace plots, an example of which is shown in Figure \@ref(fig:exm-trace).
+
+(ref:exm-trace-cap) Trace plot for the attribute-level intercept $\lambda_0$
+
+```{r exm-trace, dependson = "estimate-models", fig.cap = "(ref:exm-trace-cap)"}
+gather_draws(pteq, mean_intercept) %>%
+  ggplot(aes(x = .iteration, y = .value, color = factor(.chain))) +
+    geom_line() +
+    scale_color_OkabeIto() +
+    labs(x = "Iteration", y = expression(lambda[0]), color = "Chain") +
+    theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+Figure \@ref(fig:exm-trace) shows the trace plot for the attribute-level intercept, $\lambda_0$, and looks how a trace plot is expected to look. The draws appear to be coming from a stable distribution (i.e., the plot is relatively horizontal with no large upward or downward swings), and all `r words(chains)` are mixing well (as evidenced by the overlap of the `r words(chains)` colors). However, there is no empirical method that uses visual inspection alone to determine how poor a trace plot must be to conclude convergence was not met. Additionally, when there are many parameters, it is impractical to look at each individual trace plot.
+
+To address these shortcomings of evaluating trace plots directly, the $\widehat{R}$ statistic can be used to evaluate convergence [@rhat; @new_rhat]. The $\widehat{R}$ statistic is also known as the potential scale reduction [@bda3], and is a measure of how much variance there is between chains relative to the amount of variation within chains. @rhat_cut suggest that in order to conclude that the model has successfully converged, all $\widehat{R}$ values should be less than 1.1. These results can be summarized, as in Figure \@ref(fig:rhat), to demonstrate the $\widehat{R}$ values for the estimated parameters. In the estimated partial equivalency model, all values are below 1.1, indicating that the model has converged.
+
+(ref:rhat-cap) $\widehat{R}$ values for the estimated parameters in the partial equivalency model.
+
+```{r rhat, fig.cap = "(ref:rhat-cap)"}
+parms <- c("mean_intercept", "mean_maineffect", "intercept_dev",
+           "maineffect_dev", "intercept_sd", "maineffect_sd", "nu")
+labls <- c(expression(lambda[0]), expression(lambda[list(1,1)]),
+           expression(italic(b)[list(i,0)]), expression(italic(b)[list(i,1,1)]),
+           expression(sigma[italic(b)[list(i,0)]]),
+           expression(sigma[italic(b)[list(i,1,1)]]), expression(nu[c]))
+
+sims <- as.array(pteq)
+
+apply(sims, MARGIN = 3, FUN = Rhat) %>%
+  enframe(name = "parameter", value = "Rhat") %>%
+  mutate(parameter = str_replace_all(parameter, "\\[.*\\]", "")) %>%
+  filter(parameter %in% c("nu", "mean_intercept", "mean_maineffect",
+                          "intercept_dev", "maineffect_dev", "intercept_sd",
+                          "maineffect_sd")) %>%
+  mutate(parameter = factor(parameter, levels = parms)) %>%
+  ggplot(aes(x = parameter, y = Rhat, color = parameter)) +
+    geom_jitter(size = 3, height = 0, width = 0.2, show.legend = FALSE) +
+    geom_hline(yintercept = 1.1, linetype = "dashed") +
+    scale_x_discrete(labels = labls) +
+    scale_color_OkabeIto() +
+    labs(x = NULL, y = expression(widehat(R))) +
+    theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+#### Efficiency
+
+A second check of the MCMC estimation is the efficiency of the sampler, which verifies that the algorithm adequately sampled the full posterior distribution. There are several ways this can be examined. The first is by examining the effective sample size. This diagnostic takes into account the autocorrelation within chains to determine the "effective" number of independent draws from the posterior. If the chain is slow moving, the draws will be highly autocorrelated, and effective sample size will be well below the total number of retained iterations. However, a low autocorrelation would indicate that the sampler is moving around the posterior fairly quickly, and the effective sample size will be at or near the true sample size of the posterior. The effective sample size for all parameters in the model can be summarized, as in Figure \@ref(fig:eff-size), which shows that all parameters in the estimated partial equivalency model have an effective sample near the total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` retained iterations.
+
+```{r eff-size, fig.cap = "Effective sample size for each estimated parameter."}
+bulk_ess <- apply(sims, MARGIN = 3, FUN = ess_bulk)
+tail_ess <- apply(sims, MARGIN = 3, FUN = ess_tail)
+
+ess <- list(
+  summary(pteq)$summary %>%
+    as_tibble(rownames = "parameter") %>%
+    select(parameter, n_eff),
+  enframe(apply(sims, MARGIN = 3, FUN = ess_bulk), "parameter", "bulk_ess"),
+  enframe(apply(sims, MARGIN = 3, FUN = ess_tail), "parameter", "tail_ess")
+)
+
+reduce(ess, full_join, by = "parameter") %>%
+  mutate(parameter = str_replace_all(parameter, "\\[.*\\]", "")) %>%
+  filter(parameter %in% c("nu", "mean_intercept", "mean_maineffect",
+                          "intercept_dev", "maineffect_dev", "intercept_sd",
+                          "maineffect_sd")) %>%
+  mutate(parameter = factor(parameter, levels = parms)) %>%
+  ggplot(aes(x = parameter, y = n_eff, color = parameter)) +
+    geom_jitter(size = 3, height = 0, width = 0.2, show.legend = FALSE) +
+    expand_limits(y = c(0, (iter - warmup) * chains)) +
+    scale_x_discrete(labels = labls) +
+    scale_color_OkabeIto() +
+    labs(x = NULL, y = expression(widehat(R))) +
+    theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
+There are also measures of efficiency that are exclusive to the No-U-Turn Sampler [@nuts]. For example, the Bayesian factor of missing information gives and estimate of how well the sampler adapted and explored the posterior distribution. The Bayesian factor of missing information generally ranges from zero to one, with zero and one representing poor and excellent estimation, respectively. This is calculated for each chain overall, rather than each individual parameter [@bfmi].
+
+The Bayesian factor of missing information values for this example are shown in Table \@ref(tab:efficiency) and indicate that the sample was able to adequately visit the posterior distributions. Additionally, Table \@ref(tab:efficiency) shows the mean acceptance rate for each chain. As expected, these values are very close to the 0.99 adaptive threshold that was specified during the [model estimation](#estimate). As mentioned previously, a target acceptance rate this high is needed to prevent divergent transitions.
+
+The concern with setting the target acceptance rate this high is that for parameters with wider posteriors, the sampler will not be able to move fast enough. In the No-U-Turn Sampler, at each iteration, the sampler looks for a place to "U-Turn" in a series of possible branches. If the sample is terminating before the maximum possible tree depth (which was specified to be 15), then the algorithm is able to adequately find good values for the next iteration of the chain, despite the small steps being enforced by the high target acceptance rate. Bumping up against the maximum allowed tree depth, or going beyond it, indicates that the step size is too small [@stan_user; @stan_warn]. Because the maximum tree depth values in Table \@ref(tab:efficiency) are all below the maximum specified, and the Bayesian factor of missing information values are all close to one, there is strong evidence that in this model, the sampler was able to adequately sample the posteriors.
+
+```{r efficiency}
+sampler_params <- get_sampler_params(pteq, inc_warmup = FALSE)
+upars <- suppressMessages(stan(fit = pteq, data = stan_data, chains = 0)) %>%
+  get_num_upars()
+E <- as.matrix(sapply(sampler_params, FUN = function(x) x[, "energy__"]))
+EBFMI <- upars / apply(E, 2, var)
+mean_accept <- sapply(sampler_params, function(x) mean(x[, "accept_stat__"]))
+max_treedepth <- sapply(sampler_params, function(x) max(x[, "treedepth__"]))
+
+tibble(chain = glue("Chain {seq_len(chains)}"),
+       bfmi = EBFMI,
+       mean_accept = mean_accept,
+       max_treedepth = as.integer(max_treedepth)) %>%
+  mutate_if(is.double, ~ sprintf("%0.3f", .)) %>%
+  kable(align = "c", booktabs = TRUE, linesep = "",
+        caption = "Diagnostic Statistics for the No-U-Turn Sampler",
+        col.names = c("Chain", "BFMI", "Mean Acceptance Rate",
+                      "Max Tree Depth")) %>%
+  kable_styling(latex_options = "HOLD_position", full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
+  footnote(general = "BFMI = Bayesian factor of missing information.",
+           footnote_as_chunk = TRUE)
+```
+
+#### Parameter Recovery
+
+In addition to diagnostics to ensure that the model is estimated properly, it is also important to established that the model as defined in the *Stan* code is able to accurately recover the true parameter values. Otherwise, a model may estimate well, but actually be misspecified, leading to incorrect parameter estimates. Figure \@ref(fig:item-recover) shows the true (from Table \@ref(tab:true-item-param)) versus estimated item parameter values, indicating successful parameter recovery for the partial equivalency model with the simulated data.
+
+```{r item-recover, fig.cap = "Parameter recovery from the example partial equivalency model with simulated data."}
+summary(pteq)$summary %>%
+  as_tibble(rownames = "parameter") %>%
+  filter(str_detect(parameter, "(intercept|maineffect)\\[")) %>%
+  select(parameter, est = mean) %>%
+  separate(parameter, into = c("parameter", "item_id", NA), convert = TRUE) %>%
+  left_join(
+    items %>%
+      select(item_id, intercept, maineffect) %>%
+      gather(key = "parameter", value = "true", -item_id),
+    by = c("parameter", "item_id")
+  ) %>%
+  mutate(
+    parameter = factor(parameter, levels = c("intercept", "maineffect"),
+                       labels = c("lambda[0] + italic(b)[list(i,0)]",
+                                  "lambda[1,1] + italic(b)[list(i,1,1)]"))
+  ) %>%
+  ggplot(aes(x = true, y = est)) +
+    facet_wrap(~ parameter, nrow = 1, scales = "free",
+               labeller = label_parsed) +
+    geom_point(size = 3) +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+    labs(x = "True Value", y = "Estimated Value") +
+    theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png")) %>%
+  ggsave2(fig_path(".pdf"))
+
+include_graphics(fig_path(".pdf"))
+```
+
 
 
 \newpage
