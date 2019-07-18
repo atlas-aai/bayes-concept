@@ -5,3 +5,4 @@
 *.log
 _report/*
 _bookdown_files/*
+data/estimated-models/*
