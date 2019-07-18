@@ -186,6 +186,12 @@ if (!file.exists("bib/packages.bib")) file.create("bib/packages.bib")
 suppressWarnings(
   knitr::write_bib(c(.packages()), "bib/packages.bib")
 )
+
+# Correct capitalization in packages
+read_lines("bib/packages.bib") %>%
+  str_replace_all(" Stan", " {Stan}") %>%
+  str_replace_all("rstan:", "{RStan}:") %>%
+  write_lines("bib/packages.bib")
 ```
 
 \printbibliography[heading=none]
