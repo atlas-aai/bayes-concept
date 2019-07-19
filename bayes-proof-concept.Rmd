@@ -56,6 +56,62 @@ trunc_sample <- function(func, n, lb = -Inf, ub = Inf, ...) {
   
   sample(trunc_sample, size = n, replace = FALSE)
 }
+rep_data <- function(model, obs) {
+  draws <- model %>%
+    spread_draws(nu[c], pi[i,c]) %>% 
+    ungroup()
+  
+  tidy_draws <- full_join(
+    draws %>%
+      select(.chain:.draw, nu, c) %>%
+      distinct() %>%
+      spread(key = c, value = nu) %>%
+      rename(nm_nu = `1`, ms_nu = `2`),
+    draws %>%
+      select(.chain:.draw, pi, i, c) %>%
+      distinct() %>%
+      spread(key = c, value = pi) %>%
+      rename(nm_pi = `1`, ms_pi = `2`),
+    by = c(".chain", ".iteration", ".draw")
+  )
+  
+  replicated_data <- tidy_draws %>%
+    group_nest(.chain, .iteration, .draw, .key = "params") %>%
+    mutate(data_rep = map(params, function(x, obs) {
+      master_probs <- obs %>%
+        left_join(x, by = c("item_id" = "i")) %>%
+        mutate(log_nm = (score * log(nm_pi)) + ((1 - score) * log(1 - nm_pi)),
+               log_ms = (score * log(ms_pi)) + ((1 - score) * log(1 - ms_pi))) %>%
+        group_by(stu_id, nm_nu, ms_nu) %>%
+        summarize(log_nm = sum(log_nm), log_ms = sum(log_ms)) %>%
+        ungroup() %>%
+        mutate(prob_nm = nm_nu * exp(log_nm),
+               prob_ms = ms_nu * exp(log_ms),
+               master_prob = prob_ms / (prob_nm + prob_ms)) %>%
+        select(stu_id, master_prob)
+      
+      ppmc_data <- obs %>%
+        select(-score) %>%
+        left_join(master_probs, by = "stu_id") %>%
+        left_join(select(x, i, nm_pi, ms_pi), by = c("item_id" = "i")) %>%
+        mutate(prob_correct = (master_prob * ms_pi) +
+                 ((1 - master_prob) * nm_pi),
+               rand = runif(n = nrow(.), min = 0, max = 1),
+               score = case_when(rand <= prob_correct ~ 1L,
+                                 TRUE ~ 0L)) %>%
+        select(stu_id, item_id, score)
+      
+      ret_df <- tibble(
+        mastery_probs = list(master_probs),
+        ppmc_data = list(ppmc_data)
+      )
+      
+      return(ret_df)
+    }, obs = obs)) %>%
+    unnest(data_rep)
+  
+  return(replicated_data)
+}
 ggsave2 <- function(plot, filename, width = 8, dir = "h", ...) {
   asp <- ifelse(dir == "h", 0.618, 1.618)
   height <- width * asp
@@ -65,7 +121,6 @@ ggsave2 <- function(plot, filename, width = 8, dir = "h", ...) {
   invisible(plot)
 }
 ```
-
 
 # Executive Summary {-}
 
@@ -374,6 +429,29 @@ if (file_exists(here("data", "estimated-models", "nfng.rds"))) {
              cores = chains, refresh = 0, seed = 924,
              control = list(adapt_delta = 0.99, max_treedepth = 15))
   write_rds(nfng, here("data", "estimated-models", "nfng.rds"), compress = "gz")
+}
+```
+
+```{r ppmc-samples, dependson = "estimate-models", include = FALSE}
+if (file_exists(here("data", "estimated-models", "fung_ppmc.rds"))) {
+  fung_ppmc <- read_rds(here("data", "estimated-models", "fung_ppmc.rds"))
+} else {
+  fung_ppmc <- rep_data(fung, obs = response_matrix) %>%
+    write_rds(here("data", "estimated-models", "fung_ppmc.rds"))
+}
+
+if (file_exists(here("data", "estimated-models", "pteq_ppmc.rds"))) {
+  pteq_ppmc <- read_rds(here("data", "estimated-models", "pteq_ppmc.rds"))
+} else {
+  pteq_ppmc <- rep_data(pteq, obs = response_matrix) %>%
+    write_rds(here("data", "estimated-models", "pteq_ppmc.rds"))
+}
+
+if (file_exists(here("data", "estimated-models", "nfng_ppmc.rds"))) {
+  nfng_ppmc <- read_rds(here("data", "estimated-models", "nfng_ppmc.rds"))
+} else {
+  nfng_ppmc <- rep_data(nfng, obs = response_matrix) %>%
+    write_rds(here("data", "estimated-models", "nfng_ppmc.rds"))
 }
 ```
 
