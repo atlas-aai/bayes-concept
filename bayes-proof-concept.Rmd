@@ -467,7 +467,7 @@ After estimating the model, before the parameters can be analyzed and inferences
 
 A check of convergence evaluates whether the MCMC chain successfully found the high density area of the posterior distribution and stayed there. When multiple chains are estimated, this can be checked by verifying that the estimates from each chain end up in the same parameter space. For a single chain, this is checked by verifying that the parameter is sampled from roughly the same area at the beginning of the chain (after warm-up) as it is at the end of the chain. This is commonly assessed through trace plots, an example of which is shown in Figure \@ref(fig:exm-trace).
 
-(ref:exm-trace-cap) Trace plot for the attribute-level intercept $\lambda_0$
+(ref:exm-trace-cap) Trace plot for the attribute-level intercept $\lambda_0$.
 
 ```{r exm-trace, dependson = "estimate-models", fig.cap = "(ref:exm-trace-cap)"}
 gather_draws(pteq, mean_intercept) %>%
