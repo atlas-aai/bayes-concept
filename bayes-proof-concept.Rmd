@@ -524,9 +524,13 @@ include_graphics(fig_path(".pdf"))
 
 #### Efficiency
 
-A second check of the MCMC estimation is the efficiency of the sampler, which verifies that the algorithm adequately sampled the full posterior distribution. There are several ways this can be examined. The first is by examining the effective sample size. This diagnostic takes into account the autocorrelation within chains to determine the "effective" number of independent draws from the posterior. If the chain is slow moving, the draws will be highly autocorrelated, and effective sample size will be well below the total number of retained iterations. However, a low autocorrelation would indicate that the sampler is moving around the posterior fairly quickly, and the effective sample size will be at or near the true sample size of the posterior. The effective sample size for all parameters in the model can be summarized, as in Figure \@ref(fig:eff-size), which shows that all parameters in the estimated partial equivalency model have an effective sample near the total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` retained iterations.
+A second check of the MCMC estimation is the efficiency of the sampler, which verifies that the algorithm adequately sampled the full posterior distribution. There are several ways this can be examined. The first is by examining the effective sample size. This diagnostic takes into account the autocorrelation (or anticorrelation) within chains to determine the "effective" number of independent draws from the posterior. If the chain is slow moving, the draws will be highly autocorrelated, and effective sample size will be well below the total number of retained iterations [@auto_corr]. Conversely, if the chain is moving quickly, it is possible for the draws to be better than independent, or anticorrelated [@anti_corr]. In this scenario, the effective sample size is actually larger than the true sample size.
 
-```{r eff-size, fig.cap = "Effective sample size for each estimated parameter."}
+There are two type of effective sample size that can be used to evaluate the efficiency of the location and scale of the posterior distributions. The sampling efficiency of the location (e.g., mean or median) can be assessed with the bulk effective sample size. Similarly, the scale can be assessed through tail effective sample size. This can be useful for diagnosing problems with mixing due posterior samples having different scales across chains [@new_rhat]. For both measures, the @stan_best_practice recommend an effective sample size greater than or equal to the number of chains times 100.
+
+The effective sample size for all parameters in the model can be summarized, as in Figure \@ref(fig:eff-size). Because the model was estimated with `r words(chains)` chains, the effective sample size should be above `r prettyNum(chains * 100, big.mark = ",")`. Figure \@ref(fig:eff-size) shows that all parameters in the estimated partial equivalency model have both a bulk and tail effective sample size above this threshold.
+
+```{r eff-size, fig.cap = "Effective sample size for each estimated parameter. ESS = effective sample size.", fig.scap = "Effective sample size for each estimated parameter."}
 bulk_ess <- apply(sims, MARGIN = 3, FUN = ess_bulk)
 tail_ess <- apply(sims, MARGIN = 3, FUN = ess_tail)
 
@@ -544,12 +548,19 @@ reduce(ess, full_join, by = "parameter") %>%
                           "intercept_dev", "maineffect_dev", "intercept_sd",
                           "maineffect_sd")) %>%
   mutate(parameter = factor(parameter, levels = parms)) %>%
-  ggplot(aes(x = parameter, y = n_eff, color = parameter)) +
+  gather(key = "measure", value = "value", -parameter) %>%
+  mutate(measure = case_when(measure == "n_eff" ~ "ESS",
+                             measure == "bulk_ess" ~ "Bulk ESS",
+                             measure == "tail_ess" ~ "Tail ESS")) %>%
+  filter(measure != "ESS") %>%
+  ggplot(aes(x = parameter, y = value, color = parameter)) +
+    facet_wrap(~ measure, nrow = 1) +
     geom_jitter(size = 3, height = 0, width = 0.2, show.legend = FALSE) +
+    geom_hline(yintercept = chains * 100, linetype = "dashed") +
     expand_limits(y = c(0, (iter - warmup) * chains)) +
     scale_x_discrete(labels = labls) +
     scale_color_OkabeIto() +
-    labs(x = NULL, y = expression(widehat(R))) +
+    labs(x = NULL, y = "Effective Sample Size") +
     theme_atlas_ms() -> plot
 
 plot %>%
