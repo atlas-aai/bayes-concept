@@ -636,6 +636,41 @@ plot %>%
 include_graphics(fig_path(".pdf"))
 ```
 
+```{r class-recover-calc}
+thresh <- 0.5
+class_recovery <- mastery %>%
+  rename(true = mastery) %>%
+  left_join(
+    map_dfr(pteq_ppmc$mastery_probs, function(x) return(x), .id = ".draw") %>%
+      group_by(stu_id) %>%
+      summarize(prob = median(master_prob)) %>%
+      mutate(est = case_when(prob >= thresh ~ 1L, TRUE ~ 0L)) %>%
+      select(stu_id, est),
+    by = "stu_id"
+  ) %>%
+  count(true, est)
+
+correct_rate <- class_recovery %>%
+  mutate(correct = case_when(true == est ~ n, TRUE ~ 0L)) %>%
+  summarize(correct = sum(correct) / sum(n)) %>%
+  pull(correct)
+```
+
+It is also possible to examine the accuracy of the respondent classifications as a master or non-master. For this analysis, respondents were classified as masters if the median of the posterior distribution for the probability of mastery was greater than or equal to `r sprintf("%0.1f", thresh)`. This threshold places respondents in their most likely class; however, any threshold can be used in practice to facilitate stakeholder understanding of scores [@bradshaw_2019]. For example, DLM assessments use a threshold of 0.8 in order to have more confidence that students reported as masters are truly masters [see Chapter 5 of @dlm_tech_1516_im]. Respondent classification results for the partial equivalency model are summarized in Table \@ref(tab:class-recover). In total, `r sprintf("%0.0f", correct_rate * 100)`% of the simulated students were correctly classified as masters or non-masters. This is not surprising, given that the data was simulated to fit the model, and all of the items are fairly discriminating (Table \@ref(tab:true-item-param)).
+
+```{r class-recover}
+class_recovery %>%
+  mutate(n = prettyNum(n, big.mark = ",")) %>%
+  kable(align = c("c", "c", "r"), booktabs = TRUE, linesep = "", escape = FALSE,
+        caption = "Respondent Classification Accuracy",
+        col.names = c("True Mastery", "Estimated Mastery", "\\textit{n}")) %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
+  row_spec(0, bold = TRUE, align = "c")
+```
+
+## Evaluating Model Fit
+
+
 
 
 \newpage
