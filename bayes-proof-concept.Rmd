@@ -455,15 +455,11 @@ if (file_exists(here("data", "estimated-models", "nfng_ppmc.rds"))) {
 }
 ```
 
-The models are estimated in *R* using the **rstan** package interface [@R-rstan] to *Stan* [@stan], which utilizes the No-U-Turn sampler [for a detailed explanation of the approach see @nuts]. The models were estimated with `r words(chains)` chains, each with `r prettyNum(iter, big.mark = ",")` iterations. The first `r prettyNum(warmup, big.mark = ",")` iterations of each chain were discarded for warm-up, leaving a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` retained iterations that make up the posterior distributions. There are also several settings specific to the No-U-Turn Sampler [@nuts] used by *Stan*. First, the adaptive threshold was set to 0.99 to avoid divergent transitions [@betancourt_diverge]. Secondly, the maximum tree depth, which determines how far the algorithm can go before making a U-Turn [@betancourt_rstan], was set to 15. These, are both more conservative than the values suggested by the @stan_user, and the implications of these setting are discussed in the following sections.
-
-The *Stan* code for all models can be found in the [online repository for this report](https://github.com/atlas-aai/bayes-concept).
-
-### Sampler Diagnostics
+The models are estimated in *R* using the **rstan** package interface [@R-rstan] to *Stan* [@stan], which utilizes the No-U-Turn sampler [for a detailed explanation of the approach see @nuts]. The *Stan* code for all models can be found in the [online repository for this report](https://github.com/atlas-aai/bayes-concept). The models were estimated with `r words(chains)` chains, each with `r prettyNum(iter, big.mark = ",")` iterations. The first `r prettyNum(warmup, big.mark = ",")` iterations of each chain were discarded for warm-up, leaving a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` retained iterations that make up the posterior distributions. There are also several settings specific to the No-U-Turn Sampler [@nuts] used by *Stan*. First, the adaptive threshold was set to 0.99 to avoid divergent transitions [@betancourt_diverge]. Secondly, the maximum tree depth, which determines how far the algorithm can go before making a U-Turn [@betancourt_rstan], was set to 15. These, are both more conservative than the values suggested by the @stan_user, and the implications of these setting are discussed in the following sections, along with diagnostics to assess their impact.
 
 After estimating the model, before the parameters can be analyzed and inferences can be made, the model is checked to ensure the estimation process completed in an appropriate manner. This diagnostic information is critical to Markov Chain Monte Carlo (MCMC) estimation, as without proper estimation, no valid inferences can be made. Checks include evaluating convergence, efficiency of the sampler, and parameter recovery. Each are described in detail below using the estimated partial equivalency model as an example, as this was the true data generating model.
 
-#### Convergence
+### Convergence
 
 A check of convergence evaluates whether the MCMC chain successfully found the high density area of the posterior distribution and stayed there. When multiple chains are estimated, this can be checked by verifying that the estimates from each chain end up in the same parameter space. For a single chain, this is checked by verifying that the parameter is sampled from roughly the same area at the beginning of the chain (after warm-up) as it is at the end of the chain. This is commonly assessed through trace plots, an example of which is shown in Figure \@ref(fig:exm-trace).
 
@@ -522,7 +518,7 @@ plot %>%
 include_graphics(fig_path(".pdf"))
 ```
 
-#### Efficiency
+### Efficiency
 
 A second check of the MCMC estimation is the efficiency of the sampler, which verifies that the algorithm adequately sampled the full posterior distribution. There are several ways this can be examined. The first is by examining the effective sample size. This diagnostic takes into account the autocorrelation (or anticorrelation) within chains to determine the "effective" number of independent draws from the posterior. If the chain is slow moving, the draws will be highly autocorrelated, and effective sample size will be well below the total number of retained iterations [@auto_corr]. Conversely, if the chain is moving quickly, it is possible for the draws to be better than independent, or anticorrelated [@anti_corr]. In this scenario, the effective sample size is actually larger than the true sample size.
 
@@ -600,7 +596,7 @@ tibble(chain = glue("Chain {seq_len(chains)}"),
            footnote_as_chunk = TRUE)
 ```
 
-#### Parameter Recovery
+### Parameter Recovery
 
 In addition to diagnostics to ensure that the model is estimated properly, it is also important to established that the model as defined in the *Stan* code is able to accurately recover the true parameter values. Otherwise, a model may estimate well, but actually be misspecified, leading to incorrect parameter estimates. Figure \@ref(fig:item-recover) shows the true (from Table \@ref(tab:true-item-param)) versus estimated item parameter values, indicating successful parameter recovery for the partial equivalency model with the simulated data.
 
@@ -670,7 +666,20 @@ class_recovery %>%
 
 ## Evaluating Model Fit
 
+Model fit can be assessed using both absolute and relative methods, via posterior predictive model checking and model comparisons, respectively. In order to demonstrate how these methods work in practice, both the fungible and non-fungible models were estimated on the same data used to estimate the partial equivalency model in the [previous section](#estimate). Thus, there are a total of three models to compare and calculate posterior predictive checks for. For all model fit analyses, recall that the partial equivalency model was the true data generation model.
 
+### Absolute Fit
+
+Posterior predictive model checks are used to assess the absolute fit of a specific model to the observed data. Posterior predictive checks involve simulating replications of the data  using the values of the posterior distributions, and then comparing the replicated data sets back to the observed data [@bda3]. Recall from the [model estimation section](#estimate) section that a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` iterations were retained from the MCMC estimation. Thus `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets can be simulated, one for each iteration, using the current values of the parameters at each iteration. The process for simulating a replicated data set for a single interation is as follows:
+
+1. Randomly assign the first respondent to the master or non-master class, with probability equal to the current value of their probability of attribute mastery.
+2. For the first item the the respondent took, simulate a response using the current values of the item parameters and the mastery status that was simulated in step 1.
+3. Repeat step 2 for all items the respondent tested on.
+4. Repeat steps 1-3 for all respondents.
+
+This process is then repeated for each iteration in the chain. Because the replicated data sets are simulated from the current values of the parameters, these data sets represent what the data would be expected to look like *if the specified model were true*. Therefore, summaries of these data sets can then be used to look for systematic differences in the characteristics of the observed data and the replicated data sets, often through visualizations [@gelman_hill].
+
+### Relative Fit
 
 
 \newpage
