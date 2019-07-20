@@ -338,7 +338,7 @@ items %>%
                       "$\\pmb{\\lambda_{1,1}}$", "$\\pmb{b_{i,0}}$",
                       "$\\pmb{b_{i,1,1}}$", "$\\pmb{\\lambda_0 + b_{i,0}}$",
                       "$\\pmb{\\lambda_{1,1} + b_{i,1,1}}$")) %>%
-  kable_styling(latex_options = "HOLD_position", full_width = TRUE) %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
   row_spec(0, bold = TRUE, align = "c") %>%
   footnote(general = "IE = instructionally embedded; SP = spring.",
            footnote_as_chunk = TRUE)
