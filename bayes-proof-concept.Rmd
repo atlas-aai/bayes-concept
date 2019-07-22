@@ -467,7 +467,7 @@ The models are estimated in *R* using the **rstan** package interface [@R-rstan]
 
 After estimating the model, before the parameters can be analyzed and inferences can be made, the model is checked to ensure the estimation process completed in an appropriate manner. This diagnostic information is critical to Markov Chain Monte Carlo (MCMC) estimation, as without proper estimation, no valid inferences can be made. Checks include evaluating convergence, efficiency of the sampler, and parameter recovery. Each are described in detail below using the estimated partial equivalency model as an example, as this was the true data generating model.
 
-### Convergence
+### Convergence {#converge}
 
 A check of convergence evaluates whether the MCMC chain successfully found the high density area of the posterior distribution and stayed there. When multiple chains are estimated, this can be checked by verifying that the estimates from each chain end up in the same parameter space. For a single chain, this is checked by verifying that the parameter is sampled from roughly the same area at the beginning of the chain (after warm-up) as it is at the end of the chain. This is commonly assessed through trace plots, an example of which is shown in Figure \@ref(fig:exm-trace).
 
