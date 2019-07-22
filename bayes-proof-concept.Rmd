@@ -291,6 +291,7 @@ all_response <- tibble(testlet_id = c("103", "104", "101,103", "101,104",
          weight = case_when(testlets == 0 ~ 0.5 * ye_pct,
                             testlets == 1 ~ ((1 - rt_pct) * (1 - ye_pct)) / 4,
                             testlets == 2 ~ (rt_pct * (1 - ye_pct)) / 2)) %>%
+  filter(weight > 0) %>%
   select(-testlets) %>%
   sample_n(size = num_stu, replace = TRUE, weight = weight) %>%
   select(-weight) %>%
