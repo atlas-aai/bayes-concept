@@ -183,7 +183,7 @@ If the item-level parameters are constrained to be 0, then all items will have p
 
 ## Prior Specification for Attribute-Level Effects {#attr-priors}
 
-In equation \@ref(eq:dlm-lcdm), there are two attribute-level effects that require prior specifications. The first attribute-level effect is $\lambda_{0}$,  which represents the average intercept across all items. Thus, this parameter also represents the log-odds (due to the logit link function) of a non-master providing a correct response to an average item. For this parameter, a $\mathcal{N}(\mu = 0,\ \sigma=2)$ distribution. This prior distribution is chosen as 99% of the distribution encompasses the plausible values for this parameter. Specifically, the middle 99% of the distribution consists of the log-odds range -5.15 to 5.15, which covers nearly all of the probability scale with other parameters are equal to zero, as seen in Figure \@ref(fig:log-odds).
+In equation \@ref(eq:dlm-lcdm), there are two attribute-level effects that require prior specifications. The first attribute-level effect is $\lambda_{0}$, which represents the average intercept across all items. Thus, this parameter also represents the log-odds (due to the logit link function) of a non-master providing a correct response to an average item. For this parameter, a $\mathcal{N}(\mu = 0,\ \sigma=2)$ distribution was used as the prior. This prior distribution was chosen as 99% of the distribution encompasses the plausible values for this parameter. Specifically, the middle 99% of the distribution consists of the log-odds range -5.15 to 5.15, which covers nearly all of the probability scale with other parameters are equal to zero, as seen in Figure \@ref(fig:log-odds).
 
 ```{r log-odds, fig.cap = "Log-odds to probability conversion."}
 tibble(x = seq(-5, 5, by = 0.01)) %>%
@@ -251,7 +251,7 @@ include_graphics(fig_path(".pdf"))
 
 ## Prior Specification for Class-Level Parameters {#strc-priors}
 
-The last parameter that requires a prior is the structural parameter in equation \@ref(eq:dcm), $\nu_c$. This parameter defines the base rate of inclusion for each class. As such, $\nu$ is constrained such that all elements sum to one (i.e., there are no non-class respondents). Because this discussion is limited to models with a single binary attribute, there are only two classes, and therefore two elements of $\nu$. No assumptions are made about the base rate of mastery for attributes; therefore, a uniform Dirichlet prior, $\text{Dir}(1)$, is used for the prior distribution. As there only two classes, this is equivalent to using a uniform Beta distribution, $\text{Beta}(\alpha=1,\ \beta=1)$, for $\nu_1$ and then calculating $\nu_2$ as $\nu_2 = 1 - \nu_1$.
+The last parameter that requires a prior is the structural parameter in equation \@ref(eq:dcm), $\nu_c$. This parameter defines the base rate of inclusion for each class. As such, $\nu$ is constrained such that all elements sum to one (i.e., there are no non-class respondents). Because this discussion is limited to models with a single binary attribute, there are only two classes, and therefore two elements of $\nu$. No assumptions are made about the base rate of mastery for attributes; therefore, a uniform Dirichlet prior, $\text{Dir}(1)$, was used for the prior distribution. As there only two classes, this is equivalent to using a uniform Beta distribution, $\text{Beta}(\alpha=1,\ \beta=1)$, for $\nu_1$ and then calculating $\nu_2$ as $\nu_2 = 1 - \nu_1$.
 
 # The Bayesian Framework in Practice
 
@@ -261,9 +261,9 @@ In order to demonstrate the utility and benefits of using the Bayesian model def
 
 ```{r example-data, include = FALSE, cache = TRUE}
 set.seed(9416)
-num_stu <- 11000
+num_stu <- 1700
 att_mastery <- 0.6
-ye_pct <- 0.8
+ye_pct <- 0
 rt_pct <- 0.1
 
 # simulate items
@@ -274,10 +274,10 @@ items <- tibble(testlet_id = 101:104,
   rowid_to_column(var = "item_id") %>%
   mutate(attr_intercept = runif(1, -2.25, -1.00),
          attr_maineffect = runif(1, 1.00, 4.50),
-         item_intercept = rnorm(n(), mean = 0, sd = 0.5),
+         item_intercept = rnorm(n(), mean = 0, sd = 1.0),
          item_maineffect = trunc_sample(rnorm, n = n(),
                                         lb = -1 * unique(attr_maineffect),
-                                        mean = 0, sd = 0.5),
+                                        mean = 0, sd = 1.0),
          intercept = attr_intercept + item_intercept,
          maineffect = attr_maineffect + item_maineffect,
          nm_prob = map_dbl(intercept, inv_logit),
