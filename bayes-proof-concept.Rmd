@@ -96,9 +96,11 @@ rep_data <- function(model, obs) {
         select(-score) %>%
         left_join(master_probs, by = "stu_id") %>%
         left_join(select(x, i, nm_pi, ms_pi), by = c("item_id" = "i")) %>%
-        mutate(prob_correct = (master_prob * ms_pi) +
-                 ((1 - master_prob) * nm_pi),
-               rand = runif(n = nrow(.), min = 0, max = 1),
+        mutate(prob_correct = case_when(master_prob >= 0.5 ~ ms_pi,
+                                        TRUE ~ nm_pi)) %>%
+        # mutate(prob_correct = (master_prob * ms_pi) +
+        #          ((1 - master_prob) * nm_pi)) %>%
+        mutate(rand = runif(n = nrow(.), min = 0, max = 1),
                score = case_when(rand <= prob_correct ~ 1L,
                                  TRUE ~ 0L)) %>%
         select(stu_id, item_id, score)
