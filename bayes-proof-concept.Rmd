@@ -18,12 +18,13 @@ subparagraph: yes
 mainfont: Palatino LT Std
 fontsize: 11pt
 acknowledgements: >
-  `r if (knitr::is_latex_output()) jayhawkdown::inc("front-matter/preface.Rmd")`
+  `r if (knitr::is_latex_output()) ratlas::inc("front-matter/preface.Rmd")`
 ---
 
 ```{r setup, include=FALSE}
 needed_packages <- c("ratlas", "knitr", "english", "kableExtra", "tidyverse",
-                     "rstan", "loo", "tidybayes", "here", "glue", "fs")
+                     "rstan", "loo", "tidybayes",
+                     "here", "glue", "fs")
 load_packages <- function(x) {
   if (!(x %in% installed.packages())) {
     install.packages(x, repos = "https://cran.rstudio.com/")
@@ -34,6 +35,7 @@ load_packages <- function(x) {
 vapply(needed_packages, load_packages, logical(1))
 
 extrafont::loadfonts(quiet = TRUE)
+ratlas::update_geom_font_ms_defaults()
 
 options(knitr.kable.NA = "")
 ```
