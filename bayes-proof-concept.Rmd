@@ -116,9 +116,11 @@ rep_data <- function(model, obs) {
   
   return(replicated_data)
 }
-ggsave2 <- function(plot, filename, width = 8, dir = "h", ...) {
-  asp <- ifelse(dir == "h", 0.618, 1.618)
-  height <- width * asp
+ggsave2 <- function(plot, filename, width = 8, height = NULL, dir = "h", ...) {
+  if (is.null(height)) {
+    asp <- ifelse(dir == "h", 0.618, 1.618)
+    height <- width * asp
+  }
   
   ggplot2::ggsave(filename, plot, width = width, height = height, units = "in",
                   dpi = "retina", ...)
