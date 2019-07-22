@@ -563,6 +563,7 @@ reduce(ess, full_join, by = "parameter") %>%
     geom_hline(yintercept = chains * 100, linetype = "dashed") +
     expand_limits(y = c(0, (iter - warmup) * chains)) +
     scale_x_discrete(labels = labls) +
+    scale_y_comma() +
     scale_color_OkabeIto() +
     labs(x = NULL, y = "Effective Sample Size") +
     theme_atlas_ms() -> plot
