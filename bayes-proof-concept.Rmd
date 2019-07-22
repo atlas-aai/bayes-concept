@@ -675,11 +675,15 @@ class_recovery %>%
 
 ## Evaluating Model Fit
 
+```{r clear-mem, include = FALSE}
+rm(fung, pteq, nfng, stan_data); gc()
+```
+
 Model fit can be assessed using both absolute and relative methods, via posterior predictive model checking and model comparisons, respectively. In order to demonstrate how these methods work in practice, both the fungible and non-fungible models were estimated on the same data used to estimate the partial equivalency model in the [previous section](#estimate). Thus, there are a total of three models to compare and calculate posterior predictive checks for. For all model fit analyses, recall that the partial equivalency model was the true data generation model.
 
-### Absolute Fit
+### Absolute Fit {#abs-fit}
 
-Posterior predictive model checks are used to assess the absolute fit of a specific model to the observed data. Posterior predictive checks involve simulating replications of the data  using the values of the posterior distributions, and then comparing the replicated data sets back to the observed data [@bda3]. Recall from the [model estimation section](#estimate) section that a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` iterations were retained from the MCMC estimation. Thus `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets can be simulated, one for each iteration, using the current values of the parameters at each iteration. The process for simulating a replicated data set for a single interation is as follows:
+Posterior predictive model checks are used to assess the absolute fit of a specific model to the observed data. Posterior predictive checks involve simulating replications of the data using the values of the posterior distributions, and then comparing the replicated data sets back to the observed data [@bda3]. Recall from the [model estimation section](#estimate) section that a total of `r prettyNum((iter - warmup) * chains, big.mark = ",")` iterations were retained from the MCMC estimation. Thus `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets can be simulated, one for each iteration, using the current values of the parameters at each iteration. The process for simulating a replicated data set for a single interation is as follows:
 
 1. Randomly assign the first respondent to the master or non-master class, with probability equal to the current value of their probability of attribute mastery.
 2. For the first item the the respondent took, simulate a response using the current values of the item parameters and the mastery status that was simulated in step 1.
@@ -688,7 +692,332 @@ Posterior predictive model checks are used to assess the absolute fit of a speci
 
 This process is then repeated for each iteration in the chain. Because the replicated data sets are simulated from the current values of the parameters, these data sets represent what the data would be expected to look like *if the specified model were true*. Therefore, summaries of these data sets can then be used to look for systematic differences in the characteristics of the observed data and the replicated data sets, often through visualizations [@gelman_hill].
 
+#### Model-Level Fit
+
+```{r score-dist-calc, cache = TRUE, include = FALSE}
+calc_score_dist <- function(x) {
+  map_dfr(x$ppmc_data, function(x) {
+    x %>%
+      group_by(stu_id) %>%
+      summarize(raw_score = sum(score)) %>%
+      count(raw_score)
+  }, .id = ".draw")
+}
+
+score_dist <- list(fung_ppmc, pteq_ppmc, nfng_ppmc) %>%
+  set_names("Fungible", "Partial Equivalency", "Non-fungible") %>%
+  map(calc_score_dist) %>%
+  bind_rows(.id = "model") %>%
+  complete(model, .draw, raw_score, fill = list(n = 0)) %>%
+  mutate(model = factor(model, levels = c("Fungible", "Partial Equivalency",
+                                          "Non-fungible")))
+
+score_summary <- score_dist %>%
+  group_by(model, raw_score) %>%
+  summarize(mean = mean(n),
+            median = median(n),
+            lb = quantile(n, probs = 0.025),
+            ub = quantile(n, probs = 0.975)) %>%
+  left_join(
+    response_matrix %>%
+      group_by(stu_id) %>%
+      summarize(raw_score = sum(score)) %>%
+      count(raw_score),
+    by = "raw_score"
+  ) %>%
+  rename(obs = n)
+```
+
+At the model-level (the linkage level for DLM assessments), posterior predictive checks can be calculated for the raw score distribution. This is accomplished by counting the number of respondents at each raw score point in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. In DLM assessments, this would be the total number of correct items for a student on a given linkage level. Thus, a distribution is derived from the number of respondents expected to be present at each raw score point in the observed data. Figure \@ref(fig:score-dist) shows the distribution of expected raw scores along with the number of observed students in the simulated data. This shows a bimodal distribution, which is a result of the mixture of raw score distributions for masters and non-masters. Additionally, there very few student expected to have a high raw score due to the fact that few students test on three testlets (Table \@ref(tab:testlet-prob)). Finally, the expected distribution for fungible model shows some deviations from the observed scores. Specifically, the fungible model over-estimates the number of students with a raw score of seven.
+
+```{r score-dist, fig.cap = "Posterior predictive model check for the raw score distribution."}
+ggplot() +
+  facet_wrap(~ model, ncol = 1) +
+  geom_jitter(data = group_by(score_dist, model, raw_score) %>% sample_n(500),
+              aes(x = raw_score, y = n),
+              alpha = 0.2, height = 0, width = 0.3) +
+  geom_line(data = score_summary,
+            aes(x = raw_score, y = lb, color = "95% Credible Interval"),
+            linetype = "dashed", show.legend = FALSE) +
+  geom_line(data = score_summary,
+            aes(x = raw_score, y = ub, color = "95% Credible Interval"),
+            linetype = "dashed", show.legend = FALSE) +
+  geom_line(data = score_summary,
+            aes(x = raw_score, y = obs, color = "Observed"),
+            linetype = "solid") +
+  geom_point(data = score_summary,
+            aes(x = raw_score, y = obs, color = "Observed"),
+            size = 4, show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(0, 15, 1)) +
+  scale_y_comma(expand = waiver()) +
+  scale_color_OkabeIto() +
+  labs(x = "Raw Score", y = "Students", color = NULL) +
+  theme_atlas_ms() -> plot
+
+plot %>%
+  ggsave2(fig_path(".png"), height = 8) %>%
+  ggsave2(fig_path(".pdf"), height = 8)
+
+include_graphics(fig_path(".pdf"))
+```
+
+Similar to the examination of trace plots [above](#converge) (Figure \@ref(fig:exm-trace)), this visualization alone is insufficient for determining if the amount of misfit in the distribution is significant. Rather, @beguin_2001 suggest a $\chi^2$ discrepancy measure can be calculated according to equation \@ref(eq:chisq).
+
+\begin{equation}
+  \chi_{obs}^2=\sum_{s=0}^S\frac{[n_s-E(n_s)]^2}{E(n_s)}
+  (\#eq:chisq)
+\end{equation}
+
+In equation \@ref(eq:chisq), $s$ represents the score point, $n_s$ is the number of respondents at score point $s$, and $E(n_s)$ is the expected number of respondents at score point $s$, calculated as the average over all of the replicated data sets. Like the $\chi^2$ tests that are used to assess model fit when the expectation-maximization algorithm is used, the $\chi_{obs}^2$ statistic does not follow a true $\chi^2$ distribution. However, when using posterior predictive model checks, none of the distributional assumptions are required. This is because the reference distribution can be generated directly from the replicated data sets, similar to a parametric bootstrap. Using the same definition of $E(n_s)$ as above, a $\chi_{rep}^2$ can be computed for each of the replicated data sets. The `r prettyNum((iter - warmup) * chains, big.mark = ",")` $\chi_{rep}^2$ values then make up the reference distribution to compare back to $\chi_{obs}^2$. A posterior predictive *p*-value (*ppp*) can then be calculated as shown in equation \@ref(eq:ppp).
+
+\begin{equation}
+  ppp=P(\chi_{rep}^2\geq\chi_{obs}^2\ |\ n_s)
+  (\#eq:ppp)
+\end{equation}
+
+In words, equation \@ref(eq:ppp) says that the posterior predictive *p*-value is the proportion of replicated data sets whose $\chi_{rep}^2$ value is greater than the $\chi_{obs}^2$ value from the observed data. Posterior predictive *p*-values close to zero indicate poor model fit (a cutoff of .05 could be used, for example), whereas values very close to one may indicate possible over-fitting. The $\chi_{obs}^2$ distributions and posterior predictive *p*-values for the fungible, partial equivalency, and non-fungible model are shown in Table \@ref(tab:chisq-stats) and visualized in Figure \@ref(fig:chisq-dist). As expected given the distributions in Figure \@ref(fig:score-dist), the fungible model shows poor model fit, with a posterior predictive *p*-value less than .05. In contrast, both the partial equivalency and non-fungible models show acceptable fit to the simulated data.
+
+```{r chisq-calc, include = FALSE}
+ppmc_chisq <- score_dist %>%
+  left_join(select(score_summary, model, raw_score, exp = mean),
+            by = c("model", "raw_score")) %>%
+  mutate(exp = na_if(exp, 0)) %>%
+  replace_na(list(exp = 0.000001)) %>%
+  mutate(piece = ((n - exp) ^ 2) / exp) %>%
+  group_by(model, .draw) %>%
+  summarize(chisq = sum(piece))
+
+obs_chisq <- response_matrix %>%
+  group_by(stu_id) %>%
+  summarize(raw_score = sum(score)) %>%
+  count(raw_score) %>%
+  full_join(select(score_summary, model, raw_score, exp = mean),
+            by =  "raw_score") %>%
+  mutate(exp = na_if(exp, 0)) %>%
+  replace_na(list(exp = 0.000001, n = 0)) %>%
+  mutate(piece = ((n - exp) ^ 2) / exp) %>%
+  group_by(model) %>%
+  summarize(obs_chisq = sum(piece)) %>%
+  left_join(ppmc_chisq, by = "model") %>%
+  group_by(model) %>%
+  summarize(ppp = sprintf("%0.3f", mean(chisq >= obs_chisq)),
+            obs_chisq = unique(obs_chisq),
+            rep_mean = mean(chisq),
+            rep_5 = quantile(chisq, probs = 0.05),
+            rep_95 = quantile(chisq, probs = 0.95)) %>%
+  mutate(sign = case_when(ppp == "1.000" ~ ">",
+                          ppp == "0.000" ~ "<",
+                          TRUE ~  "="),
+         ppp = case_when(ppp == "1.000" ~ "0.999",
+                         ppp == "0.000" ~ "0.001",
+                         TRUE ~ ppp),
+         lab = paste0(expression(italic(ppp)), '~"', sign, '"~', ppp))
+```
+
+(ref:chisq-stats-cap) $\chi_{obs}^2$ values and summaries of $\chi_{rep}^2$ distributions.
+
+(ref:chisq-stat-foot) *ppp* = posterior predictive *p*-value.
+
+```{r chisq-stats}
+obs_chisq %>%
+  select(model, obs_chisq, rep_mean, rep_5, rep_95, ppp) %>%
+  mutate_if(is.double, ~ sprintf("%0.2f", .)) %>%
+  kable(align = c("l", "r", rep("c", 4)), booktabs = TRUE, linesep = "",
+        escape = FALSE, caption = "(ref:chisq-stats-cap)",
+        col.names = c("Model", "$\\pmb{\\chi_{obs}^2}$",
+                      "$\\pmb{\\chi_{rep}^2}$ Mean",
+                      "$\\pmb{\\chi_{rep}^2}$ 5\\%",
+                      "$\\pmb{\\chi_{rep}^2}$ 95\\%",
+                      "\\textit{ppp}")) %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
+  column_spec(1, width = "10em") %>%
+  footnote(general = "(ref:chisq-stat-foot)", footnote_as_chunk = TRUE)
+```
+
+(ref:chisq-dist-cap) Posterior predictive model check for $\chi_{rep}^2$ distributions and $\chi_{obs}^2$ values.
+
+```{r chisq-dist, fig.cap = "(ref:chisq-dist-cap)"}
+ggplot() +
+  facet_wrap(~ model, ncol = 1) +
+  geom_histogram(data = ppmc_chisq,
+                 aes(x = chisq, y = stat(density),
+                     fill = "95% Credible Interval",
+                     color = "95% Credible Interval"),
+                 alpha = 0.8, binwidth = 1, boundary = 0) +
+  geom_histogram(data = ppmc_chisq,
+                 aes(x = chisq, y = stat(density), fill = "Observed"),
+                 alpha = 0, binwidth = 1) +
+  geom_line(data = ppmc_chisq, aes(x = chisq), stat = "density", trim = TRUE) +
+  geom_vline(data = obs_chisq,
+             aes(xintercept = obs_chisq, color = "Observed"),
+             linetype = "dashed", size = 1, show.legend = FALSE) +
+  # geom_text(data = obs_chisq,
+  #           aes(x = 40, y = 0.003, label = lab),
+  #           vjust = 0, hjust = 0, parse = TRUE) +
+  expand_limits(x = c(0, 45)) +
+  scale_fill_OkabeIto() +
+  scale_color_OkabeIto() +
+  labs(x = expression(chi[italic(rep)]^2), y = "Posterior Density", fill = NULL) +
+  theme_atlas_ms() +
+  guides(color = "none") -> plot
+
+plot %>%
+  ggsave2(fig_path(".png"), height = 8) %>%
+  ggsave2(fig_path(".pdf"), height = 8)
+
+include_graphics(fig_path(".pdf"))
+```
+
+#### Item-Level Fit
+
+Posterior predictive checks can also be used to assess item-level fit by creating posterior summaries of item *p*-values. This is accomplished by calculating a *p*-value for each item in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. This provides a distribution for plausible item *p*-values if the model fits. The item *p*-values from the observed data can then be compared to these distributions. Figure \@ref(fig:ppmc-all-pval) shows an example of these comparisons for the fungible, partial equivalency, and non-fungible models. This shows very clearly the assumptions of the fungible model. That is, each item has the same expected *p*-value in the fungible model, but different expectations for the partial equivalency and non-fungible models. Because the simulated data was not fungible, Figure \@ref(fig:ppmc-all-pval) correctly shows that the fungible model was unable to successfully recover the observed item *p*-values.
+
+```{r pval-calc, cache = TRUE, include = FALSE}
+pval_calc <- function(master, rep, obs) {
+  overall_pval <- rep %>%
+    group_by(item_id) %>%
+    summarize(ppmc_pval = mean(score)) %>%
+    left_join(
+      obs %>%
+        group_by(item_id) %>%
+        summarize(obs_pval = mean(score)),
+      by = "item_id"
+    )
+  
+  cond_pval <- obs %>%
+    rename(obs_score = score) %>%
+    left_join(rename(rep, sim_score = score), by = c("stu_id", "item_id")) %>%
+    left_join(master, by = "stu_id") %>%
+    mutate(master = case_when(master_prob >= 0.5 ~ "ms",
+                              TRUE ~ "nm")) %>%
+    group_by(item_id, master) %>%
+    summarize(ppmc_pval = mean(sim_score),
+              obs_pval=  mean(obs_score)) %>%
+    pivot_longer(ppmc_pval:obs_pval, names_to = "meas", values_to = "value") %>%
+    pivot_wider(names_from = c(master, meas), values_from = value)
+  
+  full_join(overall_pval, cond_pval, by = "item_id")
+}
+
+if (file_exists(here("data", "estimated-models", "pvals.rds"))) {
+  all_pval <- read_rds(here("data", "estimated-models", "pvals.rds"))
+} else {
+  all_pval <- bind_rows(
+    map2_dfr(fung_ppmc$mastery_probs, fung_ppmc$ppmc_data, pval_calc,
+             obs = response_matrix, .id = ".draw") %>%
+      mutate(.draw = as.integer(.draw), model = "Fungible"),
+    map2_dfr(pteq_ppmc$mastery_probs, pteq_ppmc$ppmc_data, pval_calc,
+             obs = response_matrix, .id = ".draw") %>%
+      mutate(.draw = as.integer(.draw), model = "Partial Equivalency"),
+    map2_dfr(nfng_ppmc$mastery_probs, nfng_ppmc$ppmc_data, pval_calc,
+             obs = response_matrix, .id = ".draw") %>%
+      mutate(.draw = as.integer(.draw), model = "Non-fungible"),
+  ) %>%
+  mutate(model = factor(model, levels = c("Fungible", "Partial Equivalency",
+                                          "Non-fungible")))
+  write_rds(all_pval, here("data", "estimated-models", "pvals.rds"),
+            compress = "gz")
+}
+```
+
+(ref:ppmc-all-pval-cap) Posterior predictive model check for overall item *p*-values.
+
+```{r ppmc-all-pval, fig.cap = "(ref:ppmc-all-pval-cap)"}
+pval_summary <- all_pval %>%
+  group_by(model, item_id) %>%
+  summarize(obs = unique(obs_pval),
+            ppmc_lb = quantile(ppmc_pval, probs = 0.025),
+            ppmc_mb = quantile(ppmc_pval, probs = 0.500),
+            ppmc_ub = quantile(ppmc_pval, probs = 0.975))
+
+ggplot() +
+  facet_wrap(~ model, ncol = 1) +
+  geom_jitter(data = group_by(all_pval, model, item_id) %>% sample_n(500),
+              aes(x = item_id, y = ppmc_pval),
+              alpha = 0.2, height = 0, width = 0.3) +
+  geom_crossbar(data = pval_summary,
+                aes(x = item_id, y = ppmc_mb, ymin = ppmc_lb, ymax = ppmc_ub,
+                    color = "95% Credible Interval"),
+                show.legend = FALSE) +
+  geom_point(data = pval_summary,
+             aes(x = item_id, y = obs, color = "Observed"),
+             shape = 18, size = 3) +
+  expand_limits(y = c(0, 1)) +
+  scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
+  scale_color_OkabeIto() +
+  labs(x = "Item", y = expression(Item~~italic(p)*-value), color = NULL) +
+  theme_atlas_ms() +
+  theme(panel.grid.minor.x = element_blank()) +
+  guides(color = guide_legend(override.aes = list(shape = 15))) -> plot
+
+plot %>%
+  ggsave2(fig_path(".png"), height = 8) %>%
+  ggsave2(fig_path(".pdf"), height = 8)
+
+include_graphics(fig_path(".pdf"))
+```
+
+One limitation of using the overall item *p*-values is that this method over looks an important aspect of the model. Recall from equation \@ref(eq:dlm-lcdm) that the model actually defines two *conditional* probabilities, not one unconditional probability. In other words, the model defines a probability of providing a correct or non-masters, and a separate probability for masters. Thus, using a single *p*-value may miss important characteristics of the data. To examine this, posterior distributions for *p*-values conditional on mastery status can be estimated, similar to the overall *p*-value method.
+
+This process is slightly complicated by that fact that mastery status is unobserved. Practically, this means that there is not an observed *p*-value for each mastery class to compare back to the posterior distributions readily available in the data. To calculate the *p*-value of an item for each mastery class, a procedure similar to that described by @sinharay_2007 is followed. When using a Bayesian MCMC estimation, a mastery classification can be made at each iteration of the Markov chain, as described [above](#abs-fit). Specifically, the probability of mastery is dichotomized at .5, although other thresholds can also be used. Using these classifications, a class-level *p*-value can be calculated for each iteration using the observed item responses and the respondents who were assigned to each class in that iteration. This results in a series of class-level *p*-values (one per item per iteration). The "observed" class-level *p*-values are then defined as the median of for each class and item across all iterations [see @sinharay_2007 for full details].
+
+Similarly, an expected class-level *p*-value can be calculated by following the same procedure, but item responses generated in the replicated data sets, rather than those in the observed data. In this way, a distribution of expected conditional *p*-values can be estimated to compare the "observed" conditional *p*-values to. This comparison is shown in Figure \@ref(fig:ppmc-cond-pval). Much like the overall *p*-values (Figure \@ref(fig:ppmc-all-pval)), the fungible model shows consistent expectation across items for each mastery class which often miss the observed value. Additionally, the partial equivalency and non-fungible models successfully recover the observed conditional *p*-values for both classes. However, Figure \@ref(fig:ppmc-cond-pval) shows that the fungible model tends to miss *p*-values for the master class more often and by a greater magnitude than for the non-master class. Thus, it appears that there is more non-fungibility in item parameters among the master than non-master class for the data that was simulated for this document. This can also be seen when examining the true parameter values that were used to simulate the data Table \@ref(tab:true-item-param), which show wider variability for $\lambda_{1,1} + b_{i,1,1}$ than for $\lambda_0 + b_{i,0}$.
+
+(ref:ppmc-cond-pval-cap) Something here.
+
+```{r ppmc-cond-pval, fig.cap = "(ref:ppmc-cond-pval-cap)"}
+cond_pval_summary <- all_pval %>%
+  select(model, item_id, .draw, contains("ms"), contains("nm")) %>%
+  pivot_longer(cols = c(-model, -item_id, -.draw)) %>%
+  separate(name, into = c("class", "meas"), extra = "merge") %>%
+  pivot_wider(names_from = meas, values_from = value) %>%
+  group_by(model, item_id, class) %>%
+  summarize(obs = median(obs_pval),
+            ppmc_lb = quantile(ppmc_pval, probs = 0.025),
+            ppmc_mb = quantile(ppmc_pval, probs = 0.500),
+            ppmc_ub = quantile(ppmc_pval, probs = 0.975))
+
+ggplot(cond_pval_summary) +
+  facet_wrap(~ model, ncol = 1) +
+  geom_rect(aes(xmin = item_id - 0.2, xmax = item_id + 0.2,
+                ymin = ppmc_lb, ymax = ppmc_ub,
+                fill = "95% Credible Interval",
+                color = class),
+            alpha = 0.7, size = 1) +
+  geom_point(aes(x = item_id, y = obs, shape = "Observed",
+                 color = class), size = 3) +
+  scale_fill_OkabeIto() +
+  scale_color_OkabeIto(order = c(3, 6), breaks = c("nm", "ms"),
+                       labels = c("Non-master", "Master")) +
+  scale_shape_manual(values = c(18)) +
+  scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
+  labs(x = "Item", y = expression(Item~~italic(p)*-value),
+       color = NULL, fill = NULL, shape = NULL) +
+  theme_atlas_ms() +
+  theme(panel.grid.minor.x = element_blank()) +
+  guides(color = guide_legend(order = 3, override.aes = list(alpha = 0)),
+         shape = guide_legend(order = 2),
+         fill = guide_legend(order = 1, override.aes = list(alpha = 1))) -> plot
+
+plot %>%
+  ggsave2(fig_path(".png"), height = 8) %>%
+  ggsave2(fig_path(".pdf"), height = 8)
+
+include_graphics(fig_path(".pdf"))
+```
+
+#### Summary of Absolute Fit Analyses
+
+For the assessment of absolute fit of the estimated models to the data, posterior predictive model checks were used to create expected distributions of data summary statistics (e.g., raw scores, *p*-values). At the model level, the raw score distributions and associated $\chi^2$-like statistics indicated that the fungible model did not fit the data whereas the partial equivalency and non-fungible models showed adequate recovery of the raw score distribution (Table \@ref(tab:chisq-stats)). At the item level, the fungible model again failed to recover characteristics of the observed data. Both the overall and conditional *p*-values had observed values that were consistently missed by the expectations produced by the fungible model. In contrast, both the partial equivalency and non-fungible models were able to recover both overall and conditional item *p*-values. Combined, these analyses provide strong evidence that only the partial equivalency and non-fungible models fit this example data.
+
 ### Relative Fit
+
+Placeholder text.
+
+# Discussion
+
+Placeholder text.
 
 
 \newpage
