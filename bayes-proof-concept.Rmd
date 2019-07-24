@@ -441,6 +441,7 @@ if (file_exists(here("data", "estimated-models", "nfng.rds"))) {
 ```
 
 ```{r ppmc-samples, dependson = "estimate-models", include = FALSE}
+# ppmc
 if (file_exists(here("data", "estimated-models", "fung_ppmc.rds"))) {
   fung_ppmc <- read_rds(here("data", "estimated-models", "fung_ppmc.rds"))
 } else {
@@ -460,6 +461,43 @@ if (file_exists(here("data", "estimated-models", "nfng_ppmc.rds"))) {
 } else {
   nfng_ppmc <- rep_data(nfng, obs = response_matrix) %>%
     write_rds(here("data", "estimated-models", "nfng_ppmc.rds"))
+}
+
+# compare
+if (all(file_exists(here("data", "estimated-models",
+                         glue("{c('fung_loo', 'fung_waic')}.rds"))))) {
+  fung_loo <- read_rds(here("data", "estimated-models", "fung_loo.rds"))
+  fung_waic <- read_rds(here("data", "estimated-models", "fung_waic.rds"))
+} else {
+  fung_log_lik <- extract_log_lik(fung)
+  fung_loo <- loo(fung) %>%
+    write_rds(here("data", "estimated-models", "fung_loo.rds"))
+  fung_waic <- waic(fung_log_lik) %>%
+    write_rds(here("data", "estimated-models", "fung_waic.rds"))
+}
+
+if (all(file_exists(here("data", "estimated-models",
+                         glue("{c('pteq_loo', 'pteq_waic')}.rds"))))) {
+  pteq_loo <- read_rds(here("data", "estimated-models", "pteq_loo.rds"))
+  pteq_waic <- read_rds(here("data", "estimated-models", "pteq_waic.rds"))
+} else {
+  pteq_log_lik <- extract_log_lik(pteq)
+  pteq_loo <- loo(pteq) %>%
+    write_rds(here("data", "estimated-models", "pteq_loo.rds"))
+  pteq_waic <- waic(pteq_log_lik) %>%
+    write_rds(here("data", "estimated-models", "pteq_waic.rds"))
+}
+
+if (all(file_exists(here("data", "estimated-models",
+                         glue("{c('nfng_loo', 'nfng_waic')}.rds"))))) {
+  nfng_loo <- read_rds(here("data", "estimated-models", "nfng_loo.rds"))
+  nfng_waic <- read_rds(here("data", "estimated-models", "nfng_waic.rds"))
+} else {
+  nfng_log_lik <- extract_log_lik(nfng)
+  nfng_loo <- loo(nfng) %>%
+    write_rds(here("data", "estimated-models", "nfng_loo.rds"))
+  nfng_waic <- waic(nfng_log_lik) %>%
+    write_rds(here("data", "estimated-models", "nfng_waic.rds"))
 }
 ```
 
