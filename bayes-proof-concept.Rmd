@@ -621,7 +621,8 @@ The concern with setting the target acceptance rate this high is that for parame
 
 ```{r efficiency}
 sampler_params <- get_sampler_params(pteq, inc_warmup = FALSE)
-upars <- suppressMessages(stan(fit = pteq, data = stan_data, chains = 0)) %>%
+upars <- suppressMessages(stan(here("Stan", "lca_parteqest.stan"),
+                               data = stan_data, chains = 0)) %>%
   get_num_upars()
 E <- as.matrix(sapply(sampler_params, FUN = function(x) x[, "energy__"]))
 EBFMI <- upars / apply(E, 2, var)
