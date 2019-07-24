@@ -1052,7 +1052,14 @@ For the assessment of absolute fit of the estimated models to the data, posterio
 
 ### Relative Fit
 
-Placeholder text.
+Relative fit is assessed through the comparison of models to determine if one model has relatively better fit than another. For DLM assessments, three methods of comparison are used: Pareto smoothed importance sampling leave-one-out cross validation [PSIS-LOO; @loo_waic; @psis], the widely applicable information criterion [WAIC; @waic], and Bayesian stacking [@stacking]. Both the PSIS-LOO and WAIC provide point estimates for the out of sample prediction accuracy using the log-likelihood posterior distribution. However, although the PSIS-LOO and WAIC are asymptotically equivalent, @loo_waic found that the PSIS-LOO is more robust than the WAIC when weak priors are used (as is true for the models utilized by DLM) and when there are influential observations (e.g., a student providing an incorrect response despite a high probability of success). When comparing these indices in practice, a difference between models is considered significant if the absolute difference in the indices is greater than 2.5 times the standard error of the difference [@bengio_2004].
+
+Additionally, model comparisons can be made using model stacking or averaging. These methods work by assigning weights to each model in the comparison that correspond to the weight that should be given to predictions from each model. Thus, the more weight assigned to a model, the more preferred it would be in isolation. This method has the benefit of being less prone to over-fitting [@piironen_2017] and also allowing for more refined inferences [@vehtari_2012]. For example, because the weights are on a probability scale, they are much easier to interpret and compare across models than the PSIS-LOO or WAIC. In this analysis, we implement the Bayesian stacking method described by @stacking.
+
+```{r}
+
+```
+
 
 # Discussion
 
