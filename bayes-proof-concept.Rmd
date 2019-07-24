@@ -718,7 +718,7 @@ class_recovery %>%
 rm(fung, pteq, nfng, stan_data); gc()
 ```
 
-Model fit can be assessed using both absolute and relative methods, via posterior predictive model checking and model comparisons, respectively. In order to demonstrate how these methods work in practice, both the fungible and non-fungible models were estimated on the same data used to estimate the partial equivalency model in the [previous section](#estimate). Thus, there are a total of three models to compare and calculate posterior predictive checks for. For all model fit analyses, recall that the partial equivalency model was the true data generation model.
+Model fit can be assessed in both an absolute and relative sense. Absolute fit is used to evaluate whether or not the estimated model adequately reflects the observed data and is a prerequisite for the evaluation of relative fit. Relative fit compares the fit of two more models that all show adequate absoulte model fit [@chen_2013; @sen_2017]. For the DLM assessments, absolute and relative fit are assessed through posterior predictive model checking and model comparisons, respectively. In order to demonstrate how these methods work in practice, both the fungible and non-fungible models were estimated on the same data used to estimate the partial equivalency model in the [previous section](#estimate). Thus, there are a total of three models to compare and calculate posterior predictive checks for. For all model fit analyses, recall that the partial equivalency model was the true data generation model.
 
 ### Absolute Fit {#abs-fit}
 
@@ -853,7 +853,7 @@ obs_chisq <- response_matrix %>%
          lab = paste0(expression(italic(ppp)), '~"', sign, '"~', ppp))
 ```
 
-(ref:chisq-stats-cap) $\chi_{obs}^2$ values and summaries of $\chi_{rep}^2$ distributions.
+(ref:chisq-stats-cap) $\chi_{obs}^2$ Values and Summaries of $\chi_{rep}^2$ Distributions.
 
 (ref:chisq-stat-foot) *ppp* = posterior predictive *p*-value.
 
@@ -1052,12 +1052,80 @@ For the assessment of absolute fit of the estimated models to the data, posterio
 
 ### Relative Fit
 
-Relative fit is assessed through the comparison of models to determine if one model has relatively better fit than another. For DLM assessments, three methods of comparison are used: Pareto smoothed importance sampling leave-one-out cross validation [PSIS-LOO; @loo_waic; @psis], the widely applicable information criterion [WAIC; @waic], and Bayesian stacking [@stacking]. Both the PSIS-LOO and WAIC provide point estimates for the out of sample prediction accuracy using the log-likelihood posterior distribution. However, although the PSIS-LOO and WAIC are asymptotically equivalent, @loo_waic found that the PSIS-LOO is more robust than the WAIC when weak priors are used (as is true for the models utilized by DLM) and when there are influential observations (e.g., a student providing an incorrect response despite a high probability of success). When comparing these indices in practice, a difference between models is considered significant if the absolute difference in the indices is greater than 2.5 times the standard error of the difference [@bengio_2004].
+```{r rel-fit-calc, include = FALSE}
+loo_list <- list(pteq_loo, nfng_loo)
+waic_list <- list(pteq_waic, nfng_waic)
+names(loo_list) <- names(waic_list) <- c("pteq", "nfng")
 
-Additionally, model comparisons can be made using model stacking or averaging. These methods work by assigning weights to each model in the comparison that correspond to the weight that should be given to predictions from each model. Thus, the more weight assigned to a model, the more preferred it would be in isolation. This method has the benefit of being less prone to over-fitting [@piironen_2017] and also allowing for more refined inferences [@vehtari_2012]. For example, because the weights are on a probability scale, they are much easier to interpret and compare across models than the PSIS-LOO or WAIC. In this analysis, we implement the Bayesian stacking method described by @stacking.
+relative_fit <- tibble(model = names(loo_list),
+                       loo = loo_list,
+                       waic = waic_list) %>%
+  mutate(loo_est = map_chr(loo, function(x) {
+    x$estimates %>%
+      as_tibble(rownames = "meas") %>%
+      filter(meas == "elpd_loo") %>%
+      mutate(psis_loo = paste0(format(round(Estimate, 1), nsmall = 1,
+                                      big.mark = ","),
+                               " (", sprintf("%0.1f", SE), ")")) %>%
+      pull(psis_loo)
+  }),
+         waic_est = map_chr(waic, function(x) {
+    x$estimates %>%
+      as_tibble(rownames = "meas") %>%
+      filter(meas == "elpd_waic") %>%
+      mutate(waic = paste0(format(round(Estimate, 1), nsmall = 1,
+                                  big.mark = ","),
+                           " (", sprintf("%0.1f", SE), ")")) %>%
+      pull(waic)
+  })) %>%
+  left_join(
+    loo_compare(loo_list) %>%
+      as_tibble(rownames = "model") %>%
+      mutate(loo_diff = paste0(sprintf("%0.1f", elpd_diff), " (",
+                               sprintf("%0.1f", se_diff), ")")) %>%
+      select(model, loo_diff),
+    by = "model"
+  ) %>%
+  left_join(
+    loo_compare(waic_list) %>%
+      as_tibble(rownames = "model") %>%
+      mutate(waic_diff = paste0(sprintf("%0.1f", elpd_diff), " (",
+                                sprintf("%0.1f", se_diff), ")")) %>%
+      select(model, waic_diff),
+    by = "model"
+  ) %>%
+  left_join(
+    enframe(loo_model_weights(loo_list), name = "model", value = "stacking") %>%
+      mutate(stacking = sprintf("%0.4f", stacking),
+             stacking = case_when(stacking == "1.0000" ~ ">.999",
+                                  stacking == "0.0000" ~ "<.001",
+                                  TRUE ~ stacking)),
+    by = "model"
+  ) %>%
+  select(model, loo_est:stacking)
+```
 
-```{r}
+Relative fit is assessed through the comparison of models to determine if one model has relatively better fit than another. Because there is no direct comparison to the data with these methods, it is important that models show adequate absolute before they are compared to each other to determine the best fitting model [@sen_2017]. Therefore, the fungible model is excluded from these analyses, as adequate absolute model fit was not demonstrated in this example data.
 
+For DLM assessments, three methods of comparison are used: Pareto smoothed importance sampling leave-one-out cross validation [PSIS-LOO; @loo_waic; @psis], the widely applicable information criterion [WAIC; @waic], and Bayesian stacking [@stacking]. Both the PSIS-LOO and WAIC provide point estimates for the out of sample prediction accuracy using the log-likelihood posterior distribution. However, although the PSIS-LOO and WAIC are asymptotically equivalent, @loo_waic found that the PSIS-LOO is more robust than the WAIC when weak priors are used (as is true for the models utilized by DLM) and when there are influential observations (e.g., a student providing an incorrect response despite a high probability of success). When comparing these indices in practice, a difference between models is considered significant if the absolute difference in the indices is greater than 2.5 times the standard error of the difference [@bengio_2004].
+
+Additionally, model comparisons can be made using model stacking or averaging. These methods work by assigning weights to each model in the comparison that correspond to the weight that should be given to predictions from each model. Thus, the more weight assigned to a model, the more preferred it would be in isolation. This method has the benefit of being less prone to over-fitting [@piironen_2017] and also allowing for more refined inferences [@vehtari_2012]. For example, because the weights are on a probability scale, they are much easier to interpret and compare across models than the PSIS-LOO or WAIC. For DLM, the Bayesian stacking method described by @stacking is implemented.
+
+Table \@ref(tab:rel-fit) shows that the PSIS-LOO and WAIC fit indices very similar (indeed identical to one decimal place) for both the partial equivalency and non-fungible models. This is not unexpected, as the PSIS-LOO and WAIC are asymptotically equivalent [@loo_waic]. In the model comparisons, both the PSIS-LOO and WAIC prefer the partial equivalency model, as indicated by the zero in the model comparison (the difference between that model and the preferred model). However, the difference in PSIS-LOO and WAIC of -1.1 between the partial equivalency and non-fungible model is less than 2.5 times the standard error of the difference (1.3). Thus, using the criteria outlined by @bengio_2004, these models fit equally well. In contrast Bayesian stacking shows a large preference for the partial equivalency. In this  comparison, nearly all of the weight is given to the partial equivalency model. Given the totality of these analyses, the partial equivalency model appears to be the model best suited to this data. Recall that this data was simulated from the partial equivalency model, so this finding is consistent with what is expected.
+
+```{r rel-fit}
+relative_fit %>%
+  mutate(model = case_when(model == "pteq" ~ "Partial Equivalency",
+                           model == "nfng" ~ "Non-fungible")) %>%
+  kable(align = c("l", "c", "c", "r", "r", "c"), booktabs = TRUE, linesep = "",
+        col.names = c("Model", "PSIS-LOO", "WAIC", "PSIS-LOO", "WAIC",
+                      "Bayesian Stacking"),
+        caption = "Relative Fit Indices and Model Comparisons.") %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
+  add_header_above(c(" " = 1, "Fit Indices" = 2, "Model Comparisons" = 3),
+                   bold = TRUE) %>%
+  footnote(general = "PSIS-LOO = Pareto smoothed importance sampling leave-one-out cross validation; WAIC = widely applicable information criterion. Parentheses represent the standard error of the index or comparison.", footnote_as_chunk = TRUE, threeparttable = TRUE)
 ```
 
 
