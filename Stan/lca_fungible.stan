@@ -60,3 +60,20 @@ model{
     target += log_sum_exp(ps);
   }
 }
+generated quantities {
+  vector[J] log_lik;
+
+  // Generate log-likelihood
+  for (j in 1:J) {
+    real ps[2];
+    for (c in 1:2) {
+      real log_items[l[j]];
+      for (m in 1:l[j]) {
+        int i = ii[s[j] + m - 1];
+        log_items[m] = y[s[j] + m - 1] * log(pi[i,c]) + (1 - y[s[j] + m -  1]) * log(1 - pi[i,c]);
+      }
+      ps[c] = log_nu[c] + sum(log_items);
+    }
+    log_lik[j] = log_sum_exp(ps);
+  }
+}
