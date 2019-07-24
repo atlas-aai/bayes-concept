@@ -1003,7 +1003,7 @@ This process is slightly complicated by that fact that mastery status is unobser
 
 Similarly, an expected class-level *p*-value can be calculated by following the same procedure, but item responses generated in the replicated data sets, rather than those in the observed data. In this way, a distribution of expected conditional *p*-values can be estimated to compare the "observed" conditional *p*-values to. This comparison is shown in Figure \@ref(fig:ppmc-cond-pval). Much like the overall *p*-values (Figure \@ref(fig:ppmc-all-pval)), the fungible model shows consistent expectation across items for each mastery class which often miss the observed value. Additionally, the partial equivalency and non-fungible models successfully recover the observed conditional *p*-values for both classes. However, Figure \@ref(fig:ppmc-cond-pval) shows that the fungible model tends to miss *p*-values for the master class more often and by a greater magnitude than for the non-master class. Thus, it appears that there is more non-fungibility in item parameters among the master than non-master class for the data that was simulated for this document. This can also be seen when examining the true parameter values that were used to simulate the data Table \@ref(tab:true-item-param), which show wider variability for $\lambda_{1,1} + b_{i,1,1}$ than for $\lambda_0 + b_{i,0}$.
 
-(ref:ppmc-cond-pval-cap) Something here.
+(ref:ppmc-cond-pval-cap) Posterior predictive model check for conditional item *p*-values.
 
 ```{r ppmc-cond-pval, fig.cap = "(ref:ppmc-cond-pval-cap)"}
 cond_pval_summary <- all_pval %>%
