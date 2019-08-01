@@ -130,7 +130,18 @@ ggsave2 <- function(plot, filename, width = 8, height = NULL, dir = "h", ...) {
 
 # Executive Summary {-}
 
-Placeholder text.
+Dynamic Learning Maps^&reg;^ (DLM^&reg;^) alternate assessments measure the knowledge, skills, and understandings of students with the most significant cognitive disabilities. Scores are reported as a mastery profile indicting which knowledge, skills, and understandings the student has mastered, and which may need more instruction. These mastery decisions are based on probabilities of mastery derived from diagnostic classification models (DCMs).
+
+This report outlines a Bayesian framework for the estimation and evaluation of DCMs that has been implemented by DLM. Specifically, this report describes:
+
+* A model definition that allows for various parameter equality constraints within a consistent conceptual framework;
+* The role of prior distributions in the model building process;
+* An estimation process utilizing the popular *Stan* programming language;
+* The assessment of estimation diagnostics such as the $\widehat{R}$ and effective sample size;
+* The evaluation of model fit using posterior predictive model checks; and
+* Model comparison using the cross validation approximations and model averaging.
+
+Findings...
 
 # Implications for the Field {-}
 
