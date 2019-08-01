@@ -1136,7 +1136,13 @@ relative_fit %>%
 
 # Discussion
 
-Placeholder text.
+This document presents a Bayesian approach to the estimation and evaluation of DCMs and latent class analyses. As a proof of concept, a simulated data set mimicking data from the DLM assessment was used to demonstrate these methods in practice. The Bayesian framework offers several advantages for model estimation and evaluation. First, the ability to place priors on item-level parameters provides a conceptual framework that allows for a straightforward definition of various equality constraints. This allows for a clear delineation of how various models differ from each other.
+
+Following the model definition, there are several existing and well tested programs for implementing these models. Specifically, the *Stan* ecosystem provides software for estimating and evaluating Bayesian models in a variety of interfaces. This proof of concept utilized the *R* interface [@R-rstan], but other interfaces exist for *Python* [PyStan; @pystan], *MATLAB* [MatlabStan; @matlabstan], *Julia* [Stan.jl; @juliastan], *Stata* [StataStan; @statastan], and the command-line terminal [CmdStan; @cmdstan]. Thus, practitioners have the flexibility to work in the environment they are most comfortable in. In addition to the flexibility in interface, the *Stan* ecosystem also has built in measures for evaluating the estimation process. This includes measures of model convergence, efficiency, and checks on sampler performance. However, access to this ecosystem currently requires users to be familiar with the *Stan* language in order to write the *Stan* code for each model. Future work should focus on developing a high-level interface to *Stan* for estimating DCMs, similar to the **rstanarm** [@R-rstanarm] and **brms** [@brms_2017; @brms_2018] *R* packages that estimate non-linear and multilevel regression models.
+
+Finally, the Bayesian framework facilitates the evaluation of model fit through posterior predictive model checks. This offers a significant improvement over existing model fit measures that rely on unmet assumptions of an asymptotic $\chi^2$ distribution or limited information indices that don't fully capture the complexity of the data. With posterior predictive model checks, replicated data sets from the posterior distributions can be generated and compared to the observed data. This give a direct and flexible scheme for evaluating model fit. In this document, the raw score distribution, item *p*-values, and conditional item *p*-values were examined. However, other characteristics of the data could be calculated and compared. Thus, researchers and practitioners are able to evaluate model based on characteristics they identify as important.
+
+Taken together, this document provides a practical guide to estimating and evaluating DCMs in applied settings. Although the models described in this paper represent a simplified one-attribute use case, they are generalizable to additional attributes. For example, @ncme_maps used an expanded version of this framework for evaluating map structures and attribute hierarchies in multivariate extensions of these models. Future will continue to illustrate how the Bayesian framework for estimating and evaluating DCMs can be implemented in applied and operational settings. 
 
 
 \newpage
@@ -1146,13 +1152,14 @@ Placeholder text.
 ```{r write-packages, include = FALSE}
 if (!file.exists("bib/packages.bib")) file.create("bib/packages.bib")
 suppressWarnings(
-  knitr::write_bib(c(.packages()), "bib/packages.bib")
+  knitr::write_bib(c(.packages(), "rstanarm"), "bib/packages.bib")
 )
 
 # Correct capitalization in packages
 read_lines("bib/packages.bib") %>%
   str_replace_all(" Stan", " {Stan}") %>%
   str_replace_all("rstan:", "{RStan}:") %>%
+  str_replace_all("rstanarm:", "{RStanArm}:") %>%
   write_lines("bib/packages.bib")
 ```
 
