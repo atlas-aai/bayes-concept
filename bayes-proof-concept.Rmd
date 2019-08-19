@@ -2,10 +2,12 @@
 title: "Bayesian Psychometrics for Dynamic Learning Maps: A Proof of Concept"
 shorttitle: "Bayesian Modeling for DLM"
 subtitle: "Technical Report #19-02"
+program: "DLM"
 date: "`r format(Sys.Date(), '%B %Y')`"
 knit: "bookdown::render_book"
 site: bookdown::bookdown_site
-output: ratlas::techreport_pdf
+# output: ratlas::techreport_pdf
+output: ratlas::topicguide_docx
 bibliography: ["bib/refs.bib", "bib/packages.bib"]
 biblio-style: apa
 biblatexoptions:
@@ -38,6 +40,7 @@ extrafont::loadfonts(quiet = TRUE)
 ratlas::update_geom_font_ms_defaults()
 
 options(knitr.kable.NA = "")
+options(knitr.table.format = "latex")
 ```
 
 ```{r functions}
@@ -141,11 +144,14 @@ This report outlines a Bayesian framework for the estimation and evaluation of D
 * The evaluation of model fit using posterior predictive model checks; and
 * Model comparison using the cross validation approximations and model averaging.
 
-Findings...
+Findings illustrate the utility of the Bayesian framework for estimating and evaluating DCMs in applied settings. Throughout, recommendations are made for specific implementation decisions for the estimation process and the assessment of model fit.
 
 # Implications for the Field {-}
 
-Placeholder text.
+DCMs offer many benefits over traditional scale score reporting methods. For example, DCMs can provide more actionable scores through a fine grained mastery profile [@bradshaw_dcm; @rupp_dcm] and a more reliable scores with a shorter test length [@tb_reli; @wang_reli]. However, despite a growing field of literature describing the benefits of DCM-based assessments, these models have not seen wide-spread use in applied or operational settings [@sessoms_2018]. One reason put forward for this gap between the theory and practice of DCMs is a lack a clarity in the applied research community for how these models should be estimated and evaluated [@ravand_2015; @ravand_2019; @rupp_2018]. This report attempts to bridge the gap between theory and practice by describing a Bayesian framework for estimating DCM models using the *Stan* programming language and evaluating model fit using posterior predictive model checks.
+
+This framework, which is used in an operational setting for DLM assessments, provides a flexible method for defining different types of DCMs. Additionally, the model estimation processes and model fit measures are robust to these changes in model definition. That is, the same estimation and evaluation procedures can be applied to a wide range of DCMs. Thus, this report provides a practical guide for applied researchers in order to integrate DCMs into their own work.
+
 
 \newpage
 
