@@ -132,9 +132,9 @@ ggsave2 <- function(plot, filename, width = 8, height = NULL, dir = "h", ...) {
 
 # Executive Summary {-}
 
-Dynamic Learning Maps^&reg;^ (DLM^&reg;^) alternate assessments measure the knowledge, skills, and understandings of students with the most significant cognitive disabilities. Scores are reported as a mastery profile, indicating which knowledge, skills, and understandings the student has mastered and which ones may need more instruction. These mastery decisions are based on probabilities of mastery derived from diagnostic classification models (DCMs).
+Diagnostic assessments measure the knowledge, skills, and understandings of students with the most significant cognitive disabilities. Results are reported as a mastery profile, indicating which knowledge, skills, and understandings the student has mastered and which ones may need more instruction. These mastery decisions are based on probabilities of mastery derived from diagnostic classification models (DCMs).
 
-This report outlines a Bayesian framework for the estimation and evaluation of DCMs that has been implemented by DLM. Specifically, this report describes:
+This report outlines a Bayesian framework for the estimation and evaluation of DCMs. Specifically, this report describes:
 
 * a model definition that allows for various parameter equality constraints within a consistent conceptual framework
 * the role of prior distributions in the model building process
@@ -143,7 +143,7 @@ This report outlines a Bayesian framework for the estimation and evaluation of D
 * the evaluation of model fit using posterior predictive model checks
 * model comparison using the cross-validation approximations and model averaging
 
-Findings illustrate the utility of the Bayesian framework for estimating and evaluating DCMs in applied settings. Throughout, recommendations are made for specific implementation decisions for the estimation process and the assessment of model fit.
+Findings illustrate the utility of the Bayesian framework for estimating and evaluating DCMs in applied settings. Specifically, we demonstrate how a variety of DCMs can be defined within the same conceptual framework. Additionally, using this framework, the evaluation of model fit is more straightforward and easier to interpret with intuitive graphics. Throughout, recommendations are made for specific implementation decisions for the estimation process and the assessment of model fit.
 
 # Implications for the Field {-}
 
