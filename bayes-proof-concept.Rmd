@@ -36,7 +36,7 @@ load_packages <- function(x) {
 vapply(needed_packages, load_packages, logical(1))
 
 extrafont::loadfonts(quiet = TRUE)
-ratlas::update_geom_font_ms_defaults()
+set_theme(font = "Montserrat")
 
 options(knitr.kable.NA = "")
 options(knitr.table.format = "latex")
