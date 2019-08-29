@@ -2,4 +2,11 @@
 
 \begin{center}\textbf{All rights reserved.} Any or all portions of this document may be reproduced and distributed without prior permission provided the source is cited as:\end{center}
 
-Thompson, W. J. (2019). *Bayesian psychometrics for Dynamic Learning Maps: A proof of concept* (Technical Report No. 19-02). Lawrence, KS: University of Kansas, Accessible Teaching, Learning, and Assessment Systems.
+\setlength{\parindent}{-27pt}
+\setlength{\leftskip}{27pt}
+\noindent
+
+Thompson, W. J. (2019). *Bayesian psychometrics for diagnostic assessment: A proof of concept* (Research Report No. 19-01). Lawrence, KS: University of Kansas, Accessible Teaching, Learning, and Assessment Systems.
+
+\setlength{\parindent}{0pt}
+\setlength{\leftskip}{0pt}
