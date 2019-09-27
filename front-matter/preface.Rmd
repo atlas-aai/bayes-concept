@@ -6,7 +6,7 @@
 \setlength{\leftskip}{27pt}
 \noindent
 
-Thompson, W. J. (2019). *Bayesian psychometrics for diagnostic assessment: A proof of concept* (Research Report No. 19-01). Lawrence, KS: University of Kansas, Accessible Teaching, Learning, and Assessment Systems.
+Thompson, W. J. (2019). *Bayesian psychometrics for diagnostic assessments: A proof of concept* (Research Report No. 19-01). Lawrence, KS: University of Kansas, Accessible Teaching, Learning, and Assessment Systems.
 
 \setlength{\parindent}{0pt}
 \setlength{\leftskip}{0pt}
