@@ -1270,6 +1270,9 @@ read_lines("bib/packages.bib") %>%
   str_replace_all(" Stan", " {Stan}") %>%
   str_replace_all("rstan:", "{RStan}:") %>%
   str_replace_all("rstanarm:", "{RStanArm}:") %>%
+  str_replace_all("Bayesian", "{Bayesian}") %>%
+  str_replace_all("loo:", "{loo}:") %>%
+  str_replace_all("WAIC", "{WAIC}") %>%
   write_lines("bib/packages.bib")
 ```
 
