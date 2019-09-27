@@ -112,9 +112,9 @@ rep_data <- function(model, obs) {
         
         # Mastery status for PPMC
         ## Option 1: Random from structural parameter
-        ##left_join(rand_strc_mastery, by = "stu_id") %>%
+        left_join(rand_strc_mastery, by = "stu_id") %>%
         ## Option 2: Determined by individual mastery probability
-        mutate(master = master_prob > 0.5) %>%
+        ## mutate(master = master_prob > 0.5) %>%
         
         # Correct score calculation
         ## Option 1: 
