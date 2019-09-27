@@ -127,16 +127,47 @@ rep_data <- function(model, obs) {
         mutate(rand = runif(n = nrow(.), min = 0, max = 1),
                score = case_when(rand <= prob_correct ~ 1L,
                                  TRUE ~ 0L)) %>%
-        select(stu_id, item_id, score)
+        select(stu_id, master, item_id, score)
+      
+      pvals <- list(
+        ppmc_data %>%
+          group_by(item_id) %>%
+          summarize(ppmc_pval = mean(score)) %>%
+          ungroup(),
+        obs %>%
+          group_by(item_id) %>%
+          summarize(obs_pval = mean(score)) %>%
+          ungroup(),
+        ppmc_data %>%
+          mutate(master = case_when(master ~ "ms", TRUE ~ "nm")) %>%
+          group_by(item_id, master) %>%
+          summarize(pval = mean(score)) %>%
+          pivot_wider(names_from = master, values_from = pval) %>%
+          rename_at(vars(ms, nm), ~paste0(., "_ppmc_pval")) %>%
+          ungroup(),
+        obs %>%
+          left_join(master_probs, by = "stu_id") %>%
+          mutate(master = case_when(master_prob > 0.5 ~ "ms", TRUE ~ "nm")) %>%
+          select(-master_prob) %>%
+          group_by(item_id, master) %>%
+          summarize(pval = mean(score)) %>%
+          pivot_wider(names_from = master, values_from = pval) %>%
+          rename_at(vars(ms, nm), ~paste0(., "_obs_pval")) %>%
+          ungroup()
+      ) %>%
+        reduce(full_join, by = "item_id")
+      
+      ppmc_data <- select(ppmc_data, -master)
       
       ret_df <- tibble(
         mastery_probs = list(master_probs),
-        ppmc_data = list(ppmc_data)
+        ppmc_data = list(ppmc_data),
+        pvals = list(pvals)
       )
       
       return(ret_df)
     }, obs = obs)) %>%
-    unnest(data_rep)
+    unnest(cols = c(data_rep))
   
   return(replicated_data)
 }
@@ -1009,52 +1040,20 @@ include_graphics(fig_path(".pdf"))
 
 Posterior predictive checks can also be used to assess item-level fit by creating posterior summaries of item *p*-values. This is accomplished by calculating a *p*-value for each item in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. This provides a distribution for plausible item *p*-values if the model fits. The item *p*-values from the observed data can then be compared to these distributions. Figure \@ref(fig:ppmc-all-pval) shows an example of these comparisons for the fungible, partial equivalency, and non-fungible models. This clearly shows the assumptions of the fungible model. That is, each item has the same expected *p*-value in the fungible model, but different expectations for the partial equivalency and non-fungible models. Because the simulated data was not fungible (i.e., was generated from the partial equivalency model), Figure \@ref(fig:ppmc-all-pval) correctly shows that the fungible model was unable to successfully recover the observed item *p*-values.
 
-```{r pval-calc, cache = TRUE, include = FALSE}
-pval_calc <- function(master, rep, obs) {
-  overall_pval <- rep %>%
-    group_by(item_id) %>%
-    summarize(ppmc_pval = mean(score)) %>%
-    left_join(
-      obs %>%
-        group_by(item_id) %>%
-        summarize(obs_pval = mean(score)),
-      by = "item_id"
-    )
-  
-  cond_pval <- obs %>%
-    rename(obs_score = score) %>%
-    left_join(rename(rep, sim_score = score), by = c("stu_id", "item_id")) %>%
-    left_join(master, by = "stu_id") %>%
-    mutate(master = case_when(master_prob >= 0.5 ~ "ms",
-                              TRUE ~ "nm")) %>%
-    group_by(item_id, master) %>%
-    summarize(ppmc_pval = mean(sim_score),
-              obs_pval=  mean(obs_score)) %>%
-    pivot_longer(ppmc_pval:obs_pval, names_to = "meas", values_to = "value") %>%
-    pivot_wider(names_from = c(master, meas), values_from = value)
-  
-  full_join(overall_pval, cond_pval, by = "item_id")
-}
-
-if (file_exists(here("data", "estimated-models", "pvals.rds"))) {
-  all_pval <- read_rds(here("data", "estimated-models", "pvals.rds"))
-} else {
-  all_pval <- bind_rows(
-    map2_dfr(fung_ppmc$mastery_probs, fung_ppmc$ppmc_data, pval_calc,
-             obs = response_matrix, .id = ".draw") %>%
-      mutate(.draw = as.integer(.draw), model = "Fungible"),
-    map2_dfr(pteq_ppmc$mastery_probs, pteq_ppmc$ppmc_data, pval_calc,
-             obs = response_matrix, .id = ".draw") %>%
-      mutate(.draw = as.integer(.draw), model = "Partial Equivalency"),
-    map2_dfr(nfng_ppmc$mastery_probs, nfng_ppmc$ppmc_data, pval_calc,
-             obs = response_matrix, .id = ".draw") %>%
-      mutate(.draw = as.integer(.draw), model = "Non-fungible"),
+```{r pval-calc, include = FALSE}
+all_pval <- bind_rows(
+    select(fung_ppmc, .draw, pvals) %>%
+      unnest(cols = pvals) %>%
+      mutate(model = "Fungible"),
+    select(pteq_ppmc, .draw, pvals) %>%
+      unnest(cols = pvals) %>%
+      mutate(model = "Partial Equivalency"),
+    select(nfng_ppmc, .draw, pvals) %>%
+      unnest(cols = pvals) %>%
+      mutate(model = "Non-fungible")
   ) %>%
-  mutate(model = factor(model, levels = c("Fungible", "Partial Equivalency",
-                                          "Non-fungible")))
-  write_rds(all_pval, here("data", "estimated-models", "pvals.rds"),
-            compress = "gz")
-}
+    mutate(model = factor(model, levels = c("Fungible", "Partial Equivalency",
+                                            "Non-fungible")))
 ```
 
 (ref:ppmc-all-pval-cap) Posterior predictive model check for overall item *p*-values.
