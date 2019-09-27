@@ -8,13 +8,12 @@ This repository contains the source code for the Technical Report,
 The report is powered by [**bookdown**](https://bookdown.org), which
 makes it easy to turn R markdown files into PDF.
 
-This report was built
-with:
+This report was built with:
 
 ``` r
-devtools::session_info(c("ratlas", "knitr", "english", "kableExtra", "tidyverse",
-                         "rstan", "loo", "tidybayes",
-                         "here", "glue", "fs"))
+devtools::session_info(c("ratlas", "knitr", "english", "kableExtra",
+                         "tidyverse", "rstan", "loo", "tidybayes", "here",
+                         "glue", "fs"))
 #> ─ Session info ──────────────────────────────────────────────────────────
 #>  setting  value                       
 #>  version  R version 3.6.1 (2019-07-05)
@@ -25,7 +24,7 @@ devtools::session_info(c("ratlas", "knitr", "english", "kableExtra", "tidyverse"
 #>  collate  en_US.UTF-8                 
 #>  ctype    en_US.UTF-8                 
 #>  tz       America/Chicago             
-#>  date     2019-09-24                  
+#>  date     2019-09-27                  
 #> 
 #> ─ Packages ──────────────────────────────────────────────────────────────
 #>  package      * version      date       lib
