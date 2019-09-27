@@ -889,7 +889,14 @@ score_summary <- score_dist %>%
       count(raw_score),
     by = "raw_score"
   ) %>%
-  rename(obs = n)
+  rename(obs = n) %>%
+  replace_na(list(obs = 0))
+
+fung_text <- score_summary %>%
+  filter(model == "Fungible") %>%
+  mutate(under = obs > ub,
+         over = obs < lb) %>%
+  filter(over | under)
 ```
 
 At the model level, posterior predictive checks can be calculated for the raw score distribution. This is accomplished by counting the number of respondents at each raw score point in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. Thus, a distribution is derived from the number of respondents expected to be present at each raw score point in the observed data. Figure \@ref(fig:score-dist) shows the distribution of expected raw scores along with the number of observed students in the simulated data. 
@@ -925,7 +932,7 @@ plot %>%
 include_graphics(fig_path(".pdf"))
 ```
 
-Figure \@ref(fig:score-dist) shows a bimodal distribution, which is a result of the mixture of raw score distributions for masters and non-masters. Additionally, very few students are expected to have a high raw score due to the fact that few students test on three testlets (Table \@ref(tab:testlet-prob)). Finally, the expected distribution for fungible model shows some deviations from the observed scores. Specifically, the fungible model overestimates the number of students with a raw score of seven.
+Figure \@ref(fig:score-dist) shows a bimodal distribution, which is a result of the mixture of raw score distributions for masters and non-masters. Additionally, very few students are expected to have a high raw score due to the fact that relatively few students test on more than two testlets (Table \@ref(tab:testlet-prob)). Finally, the expected distribution for fungible model shows some deviations from the observed scores. Specifically, the fungible model overestimates the number of students with a raw score of `r pull(filter(fung_text, over), raw_score) %>% english() %>% combine_words()` and underestimates the number of students with a raw score of `r pull(filter(fung_text, under), raw_score) %>% english() %>% combine_words()`.
 
 Similar to the examination of trace plots [above](#converge) (Figure \@ref(fig:exm-trace)), this visualization alone is insufficient for determining if the amount of misfit in the distribution is significant. Rather, @beguin_2001 suggest a $\chi^2$ discrepancy measure can be calculated according to equation \@ref(eq:chisq).
 
