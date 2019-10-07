@@ -18,6 +18,7 @@ lof: true
 subparagraph: yes
 mainfont: Palatino LT Std
 fontsize: 11pt
+watermark: DRAFT
 acknowledgements: >
   `r if (knitr::is_latex_output()) ratlas::inc("front-matter/preface.Rmd")`
 ---
@@ -227,16 +228,16 @@ Findings illustrate the utility of the Bayesian framework for estimating and eva
 
 # Implications for the Field {-}
 
-DCMs offer many benefits over traditional scale score reporting methods. For example, DCMs can provide more actionable results through a fine-grained mastery profile [@bradshaw_dcm; @rupp_dcm] and more reliable scores with a shorter test length [@tb_reli; @wang_reli]. However, despite a growing field of literature describing the benefits of DCM-based assessments, these models have not seen wide-spread use in applied or operational settings [@sessoms_2018]. One reason put forward for this gap between the theory and practice of DCMs is a lack a clarity in the applied research community for how these models should be estimated and evaluated [@ravand_2015; @ravand_2019; @rupp_2018]. This report attempts to bridge the gap between theory and practice by describing a Bayesian framework for estimating DCM models using the *Stan* programming language and evaluating model fit using posterior predictive model checks.
+DCMs offer many benefits over traditional scale score reporting methods. For example, DCMs can provide more actionable results through a fine-grained mastery profile [@bradshaw_sr; @clark_sr] and more reliable scores with a shorter test length [@tb_reli; @wang_reli]. However, despite a growing field of literature describing the benefits of DCM-based assessments, these models have not seen wide-spread use in applied or operational settings [@sessoms_2018]. One reason put forward for this gap between the theory and practice of DCMs is a lack a clarity in the applied research community for how these models should be estimated and evaluated [@ravand_2015; @ravand_2019; @rupp_2018]. This report attempts to bridge the gap between theory and practice by describing a Bayesian framework for estimating DCM models using the *Stan* programming language and evaluating model fit using posterior predictive model checks.
 
-This framework, which is used in an applied setting for operational assessments, provides a flexible method for defining different types of DCMs. Additionally, the model estimation processes and model fit measures are robust to these changes in model definition. That is, the same estimation and evaluation procedures can be applied to a wide range of DCMs. Thus, this report provides a practical guide for applied researchers in order to integrate DCMs into their own work.
+This framework, which is used in an applied setting for the Dynamic Learning Maps^&reg;^ alternate assessment, provides a flexible method for defining different types of DCMs. Additionally, the model estimation processes and model fit measures are robust to these changes in model definition. That is, the same estimation and evaluation procedures can be applied to a wide range of DCMs. Thus, this report provides a practical guide for applied researchers in order to integrate DCMs into their own work.
 
 
 \newpage
 
 # Purpose of the Report
 
-Diagnostic classification models (DCMs) are able to provide fine-grained and actionable scores for a set of assessed skills or attributes [@rupp_dcm; @bradshaw_dcm]. However, because this class of models is relatively new to operational use, many psychometric properties require further investigation to support the use of the assessments. One key feature that is not well-defined in the literature is how best to assess the model fit of DCMs [@chen_2013; @hu_2016; @rupp_dcm]. Most evaluations of model rely solely on measures of  relative fit [@sen_2017], which are limited in that these indices are unable to evaluate the fit of the model to the data. Rather these measures can only make judgments relative to alternative models. The other widely used method for evaluating model fit is limited-information fit indices [e.g., @liu_2016]. In general, these methods consist of univariate, bivariate, and trivariate item tests that rely on $\chi^2$ tests that are known to be asymptotically incorrect [@maydeu_2006]. The $M_2$ statistic developed by @maydeu_2005 can correct for the distributional assumptions, but that statistic is still only based on limited information (i.e., limited sets of items), and therefore may fail to capture higher-order characteristics of the data.
+Diagnostic classification models (DCMs) are able to provide fine-grained and actionable scores for a set of assessed skills or attributes [@rupp_dcm; @bradshaw_dcm]. However, because this class of models is relatively new to operational use, many psychometric properties require further investigation to support the use of the assessments. One key feature that is not well-defined in the literature is how best to assess the model fit of DCMs [@chen_2013; @hu_2016; @rupp_dcm]. Most evaluations of model fit rely solely on measures of  relative fit [@sen_2017], which are limited in that these indices are unable to evaluate the fit of the model to the data. Rather these measures can only make judgments relative to alternative comparison models. The other widely used method for evaluating model fit is limited-information fit indices [e.g., @liu_2016]. In general, these methods consist of univariate, bivariate, and trivariate item tests that rely on $\chi^2$ tests that are known to be asymptotically incorrect [@maydeu_2006]. The $M_2$ statistic developed by @maydeu_2005 can correct for the distributional assumptions, but that statistic is still only based on limited information (i.e., limited sets of items), and therefore may fail to capture higher-order characteristics of the data.
 
 Due to these concerns, this document investigates a Bayesian framework for the estimation of this class of models. This approach allows for the estimation of alternative methods for the evaluation of model fit through posterior predictive model checking.
 
@@ -251,7 +252,7 @@ The general form of DCMs can be seen in equation \@ref(eq:dcm), where the probab
 
 In equation \@ref(eq:dcm), $\pi_{ic}$ is the probability of a respondent in class $c$ providing a correct response to item $i$, and $x_{ij}$ is the observed response (i.e., 0, 1) of respondent $j$ to item $i$. Thus, $\pi_{ic}^{x_{ij}}(1 - \pi_{ic})^{1-x_{ij}}$ represents the probability of a respondent in class $c$ providing the observed response to item $i$. These probabilities are then multiplied across all items, giving the probability of a respondent in class $c$ providing the observed response pattern. Finally, this probability is multiplied by $\nu_c$, which is the base rate probability that any given respondent belongs to class $c$. Thus, this product represents the probability that a given respondent is in class $c$ and provided the observed response pattern.
 
-Although DCMs can be estimated with multiple attributes that have more than two latent categories [@bradshaw_dcm], this paper limits the discussion to single-attribute DCMs with a binary latent trait. Thus, for each model, there are two potential mastery profiles for each respondent (e.g., master and non-master). Note, however, that the methods presented in this paper do generalize to models with multiple attributes with non-binary latent categories.
+Although DCMs can be estimated with multiple attributes that have more than two latent categories [@bradshaw_dcm], for illustrative purposes this paper limits the discussion to single-attribute DCMs with a binary latent trait. Thus, for each model, there are two potential mastery profiles for each respondent (e.g., master and non-master). Note, however, that the methods presented in this paper do generalize to models with multiple attributes with non-binary latent categories.
 
 Where different types of DCMs differ is in how $\pi_{ic}$ is defined. For example, the log-linear cognitive diagnosis model [LCDM; @lcdm] defines $\pi_{ic}$ similar to generalized linear models with a logit link function. Specifically, $\pi_{ic}$ is defined as seen in equation \@ref(eq:meas-lcdm), where $\alpha_c$ is a binary indicator of the mastery status for a respondent in class $c$.
 
@@ -271,7 +272,7 @@ For additional flexibility, equation \@ref(eq:meas-lcdm) can modified slightly i
 
 Equation \@ref(eq:dlm-lcdm) shows the similarity to multilevel models. In this model, $\lambda_0$ and $\lambda_{1,1}$ represent the attribute-level intercept and main effect, respectively. These are akin to the average intercept and main effect for all items (the fixed effects in the multilevel model literature). In addition to the attribute-level parameters, there are also item-level intercepts ($b_{i,0}$) and main effects ($b_{i,1,1}$). These parameters represent the deviation from the attribute-level effect for each item. Thus, the full intercept for item one would be calculated as $\lambda_0 + b_{1,0}$. This is similar to the estimation of random intercepts and slopes for each item [@stroup_glmm]. The difference between the proposed model and multilevel models is the treatment of the variance of these item-level parameters. In multilevel models, the variance of these effects would be estimated. However, the variance of the item-level parameters can also be fixed to pre-specified values.
 
-If the item-level parameters are constrained to be zero, then all items will have parameters equal to the attribute-level parameter (i.e., all of the $b_{i,0}$ and $b_{i,1,1}$ parameters would be zero). This is mathematically equivalent to the what is referred to here as the fungible model. Alternatively, the item-level parameters can be allowed to vary freely with no constraints (i.e., a non-fungible model). Conceptually, these two models can be thought of as using a zero-variance prior (i.e., $\mathcal{N}(0,\ 0)$) or infinite-variance or flat prior (e.g., $\mathcal{N}(0, \infty)$), respectively. Finally, a non-flat prior can be placed on the item-level parameters, such that the parameters are not constrained to be zero but also not allowed to vary completely freely either.
+If the item-level parameters are constrained to be zero, then all items will have parameters equal to the attribute-level parameter (i.e., all of the $b_{i,0}$ and $b_{i,1,1}$ parameters would be zero). This is mathematically equivalent to the what is referred to here as the *fungible* model. Alternatively, the item-level parameters can be allowed to vary freely with no constraints (i.e., a *non-fungible* model). Conceptually, these two models can be thought of as using a zero-variance prior (i.e., $\mathcal{N}(0,\ 0)$) or infinite-variance or flat prior (e.g., $\mathcal{N}(0, \infty)$), respectively. Finally, a non-flat prior can be placed on the item-level parameters, such that the parameters are not constrained to be zero but also not allowed to vary completely freely either.
 
 ## Prior Specification for Attribute-Level Effects {#attr-priors}
 
@@ -352,7 +353,7 @@ In order to demonstrate the utility and benefits of using the Bayesian model def
 
 To demonstrate the Bayesian framework in practice, the Dynamic Learning Maps^&reg;^ (DLM^&reg;^) Alternate Assessment System is used as an example diagnostic assessment where this framework is applicable. DLM assessments in English language arts (ELA), mathematics, and science are administered in 19 states to students with the most significant cognitive disabilities. For exemplary purposes, the through-course assessment model, which features instructionally embedded assessments during the year, is used as a template.
 
-In the instructionally embedded model, students cover the entire testing blueprint during each of two testing windows. The first testing window occurs during the fall, from September through December. The second window is open during the spring from February through May. During each window, students take one or more testlets, each consisting of three to five items, for each alternate content standard (called an Essential Element [EE]) required for blueprint coverage. To ensure that each EE is accessible to all students, each EE is is associated with multiple skills that represent the EE at varying levels of depth, breadth, and complexity (called linkage levels). There are five linkage levels for each EE in ELA and mathematics and three linkage levels for each EE in science. Due to the intended flexibility of the instructionally embedded testing model, students may or may not test on the same EE and linkage level multiple times within a testing window or across testing windows. Thus, the number of responses that can be used to estimate student mastery of a linkage level varies by student. For more details on the assignment of testlets, see Chapter 4 of @dlm_tech_1415_im.
+In the instructionally embedded model, students cover the entire testing blueprint during each of two testing windows. The first testing window occurs during the fall, from September through December. The second window is open during the spring from February through May. During each window, students take one or more testlets, each consisting of three to nine items, for each alternate content standard (called an Essential Element [EE]) required for blueprint coverage. To ensure that each EE is accessible to all students, each EE is is associated with multiple skills that represent the EE at varying levels of depth, breadth, and complexity (called linkage levels). There are five linkage levels for each EE in ELA and mathematics and three linkage levels for each EE in science. Due to the intended flexibility of the instructionally embedded testing model, students may or may not test on the same EE and linkage level multiple times within a testing window or across testing windows. Thus, the number of responses that can be used to estimate student mastery of a linkage level varies by student. For more details on the assignment of testlets, see Chapter 4 of @dlm_tech_1415_im.
 
 For modeling and scoring the DLM assessments, the linkage level is the unit of analysis. That is, a latent class analysis [LCA; @bartholomew_lca] with two classes is estimated for each linkage level [see Chapter 5 of @dlm_tech_1516_im]. The latent class model currently employed for operational use represents an unconstrained version of the models defined in Section \@ref(model-def) [@lcdm; @rupp_dcm]. Specifically, as discussed in Section \@ref(item-priors), the main effects of equation \@ref(eq:dlm-lcdm) are constrained to be positive to ensure monotonicity in the model. When using the unconstrained latent class model, post hoc analysis is needed to ensure the mastery classes are properly defined (i.e., the labels of "master" and "non-master" are applied to the correct classes).
 
@@ -632,7 +633,7 @@ A check of convergence evaluates whether the MCMC chain successfully found the h
 gather_draws(pteq, mean_intercept) %>%
   ggplot(aes(x = .iteration, y = .value, color = factor(.chain))) +
     geom_line() +
-    scale_color_OkabeIto() +
+    scale_color_okabe_ito() +
     labs(x = "Iteration", y = expression(lambda[0]), color = "Chain") +
     theme_atlas_ms() -> plot
 
@@ -645,11 +646,12 @@ include_graphics(fig_path(".pdf"))
 
 Figure \@ref(fig:exm-trace) shows the trace plot for the attribute-level intercept, $\lambda_0$, and looks the way a trace plot is expected to look. The draws appear to be coming from a stable distribution (i.e., the plot is relatively horizontal with no large upward or downward swings), and all `r words(chains)` are mixing well (as evidenced by the overlap of the `r words(chains)` colors). However, there is no empirical method that uses visual inspection alone to determine how poor a trace plot must be to conclude convergence was not met. Additionally, when there are many parameters, it is impractical to look at each individual trace plot.
 
-To address these shortcomings of evaluating trace plots directly, the $\widehat{R}$ statistic can be used to evaluate convergence [@rhat; @new_rhat]. The $\widehat{R}$ statistic is also known as the potential scale reduction [@bda3] and is a measure of how much variance there is between chains relative to the amount of variation within chains. @rhat_cut suggest that in order to conclude that the model has successfully converged, all $\widehat{R}$ values should be less than 1.1. These results can be summarized, as in Figure \@ref(fig:rhat), to demonstrate the $\widehat{R}$ values for the estimated parameters. In the estimated partial equivalency model, all values are below 1.1, indicating that the model has converged.
+To address these shortcomings of evaluating trace plots directly, the $\widehat{R}$ statistic can be used to evaluate convergence [@rhat; @new_rhat]. The $\widehat{R}$ statistic is also known as the potential scale reduction [@bda3] and is a measure of how much variance there is between chains relative to the amount of variation within chains. @rhat_cut suggest that in order to conclude that the model has successfully converged, all $\widehat{R}$ values should be less than 1.1. These results can be summarized, as in Figure \@ref(fig:rhat), to demonstrate the $\widehat{R}$ values for the estimated parameters. In the estimated partial equivalency model, all values are below 1.1, indicating that the model converged.
 
-(ref:rhat-cap) $\widehat{R}$ values for the estimated parameters in the partial equivalency model.
+(ref:rhat-cap) $\widehat{R}$ values for the estimated parameters in the partial equivalency model. Dotted line represents the suggested cutoff by @rhat_cut.   
+(ref:rhat-scap) $\widehat{R}$ values for the estimated parameters in the partial equivalency model.
 
-```{r rhat, fig.cap = "(ref:rhat-cap)"}
+```{r rhat, fig.cap = "(ref:rhat-cap)", fig.scap = "(ref:rhat-scap)"}
 parms <- c("mean_intercept", "mean_maineffect", "intercept_dev",
            "maineffect_dev", "intercept_sd", "maineffect_sd", "nu")
 labls <- c(expression(lambda[0]), expression(lambda[list(1,1)]),
@@ -670,7 +672,7 @@ apply(sims, MARGIN = 3, FUN = Rhat) %>%
     geom_jitter(size = 3, height = 0, width = 0.2, show.legend = FALSE) +
     geom_hline(yintercept = 1.1, linetype = "dashed") +
     scale_x_discrete(labels = labls) +
-    scale_color_OkabeIto() +
+    scale_color_okabe_ito() +
     labs(x = NULL, y = expression(widehat(R))) +
     theme_atlas_ms() -> plot
 
@@ -689,7 +691,10 @@ There are two types of effective sample size that can be used to evaluate the ef
 
 The effective sample size for all parameters in the model can be summarized, as in Figure \@ref(fig:eff-size). Because the model was estimated with `r words(chains)` chains, the effective sample size should be above `r prettyNum(chains * 100, big.mark = ",")`. Figure \@ref(fig:eff-size) shows that all parameters in the estimated partial equivalency model have both a bulk and tail effective sample size above this threshold.
 
-```{r eff-size, fig.cap = "Effective sample size for each estimated parameter. ESS = effective sample size.", fig.scap = "Effective sample size for each estimated parameter."}
+(ref:eff-size-cap) Effective sample size for each estimated parameter. Dotted line represents the suggested cutoff by @stan_best_practice. ESS = effective sample size.  
+(ref:eff-size-scap) Effective sample size for each estimated parameter.
+
+```{r eff-size, fig.cap = "(ref:eff-size-cap)", fig.scap = "(ref:eff-size-scap)"}
 bulk_ess <- apply(sims, MARGIN = 3, FUN = ess_bulk)
 tail_ess <- apply(sims, MARGIN = 3, FUN = ess_tail)
 
@@ -719,7 +724,7 @@ reduce(ess, full_join, by = "parameter") %>%
     expand_limits(y = c(0, (iter - warmup) * chains)) +
     scale_x_discrete(labels = labls) +
     scale_y_comma() +
-    scale_color_OkabeIto() +
+    scale_color_okabe_ito() +
     labs(x = NULL, y = "Effective Sample Size") +
     theme_atlas_ms() -> plot
 
@@ -921,7 +926,7 @@ ggplot() +
             size = 4, show.legend = FALSE) +
   scale_x_continuous(breaks = seq(0, 20, 1)) +
   scale_y_comma(expand = waiver()) +
-  scale_color_OkabeIto() +
+  scale_color_okabe_ito() +
   labs(x = "Raw Score", y = "Students", color = NULL) +
   theme_atlas_ms() -> plot
 
@@ -1008,9 +1013,10 @@ obs_chisq %>%
   footnote(general = "(ref:chisq-stat-foot)", footnote_as_chunk = TRUE)
 ```
 
-(ref:chisq-dist-cap) Posterior predictive model check for $\chi_{rep}^2$ distributions and $\chi_{obs}^2$ values.
+(ref:chisq-dist-cap) Posterior predictive model check for $\chi_{rep}^2$ distributions and $\chi_{obs}^2$ values. Dashed lines represent the observed $\chi_{obs}^2$ value.  
+(ref:chisq-dist-scap) Posterior predictive model check for $\chi_{rep}^2$ distributions and $\chi_{obs}^2$ values.
 
-```{r chisq-dist, fig.cap = "(ref:chisq-dist-cap)"}
+```{r chisq-dist, fig.cap = "(ref:chisq-dist-cap)", fig.scap = "(ref:chisq-dist-scap)"}
 ggplot() +
   facet_wrap(~ model, ncol = 1) +
   geom_histogram(data = ppmc_chisq,
@@ -1030,8 +1036,8 @@ ggplot() +
   #           vjust = 0, hjust = 0, parse = TRUE) +
   expand_limits(x = c(0, 65)) +
   scale_x_continuous(breaks = seq(0, 70, 10))  +
-  scale_fill_OkabeIto() +
-  scale_color_OkabeIto() +
+  scale_fill_okabe_ito() +
+  scale_color_okabe_ito() +
   labs(x = expression(chi[italic(rep)]^2), y = "Posterior Density", fill = NULL) +
   theme_atlas_ms() +
   guides(color = "none") -> plot
@@ -1045,7 +1051,7 @@ include_graphics(fig_path(".pdf"))
 
 #### Item-Level Fit
 
-Posterior predictive checks can also be used to assess item-level fit by creating posterior summaries of item *p*-values. This is accomplished by calculating a *p*-value for each item in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. This provides a distribution for plausible item *p*-values if the model fits. The item *p*-values from the observed data can then be compared to these distributions. Figure \@ref(fig:ppmc-all-pval) shows an example of these comparisons for the fungible, partial equivalency, and non-fungible models. This clearly shows the assumptions of the fungible model. That is, each item has the same expected *p*-value in the fungible model, but different expectations for the partial equivalency and non-fungible models. Because the simulated data was not fungible (i.e., was generated from the partial equivalency model), Figure \@ref(fig:ppmc-all-pval) correctly shows that the fungible model was unable to successfully recover the observed item *p*-values.
+Posterior predictive checks can also be used to assess item-level fit by creating posterior summaries of item *p*-values. This is accomplished by calculating a *p*-value for each item in each of the `r prettyNum((iter - warmup) * chains, big.mark = ",")` replicated data sets. This provides a distribution for plausible item *p*-values if the model fits. The item *p*-values from the observed data can then be compared to these distributions. Figure \@ref(fig:ppmc-all-pval) shows an example of these comparisons for the fungible, partial equivalency, and non-fungible models. This shows the assumptions of the fungible model. That is, each item has the same expected *p*-value in the fungible model, but different expectations for the partial equivalency and non-fungible models. Because the simulated data was not fungible (i.e., was generated from the partial equivalency model), Figure \@ref(fig:ppmc-all-pval) correctly shows that the fungible model was unable to successfully recover the observed item *p*-values.
 
 ```{r pval-calc, include = FALSE}
 all_pval <- bind_rows(
@@ -1087,7 +1093,7 @@ ggplot() +
              shape = 18, size = 3) +
   expand_limits(y = c(0, 1)) +
   scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
-  scale_color_OkabeIto() +
+  scale_color_okabe_ito() +
   labs(x = "Item", y = expression(Item~~italic(p)*-value), color = NULL) +
   theme_atlas_ms() +
   theme(panel.grid.minor.x = element_blank()) +
@@ -1129,8 +1135,8 @@ ggplot(cond_pval_summary) +
             alpha = 0.7, size = 1) +
   geom_point(aes(x = item_id, y = obs, shape = "Observed",
                  color = class), size = 3) +
-  scale_fill_OkabeIto() +
-  scale_color_OkabeIto(order = c(3, 6), breaks = c("ms", "nm"),
+  scale_fill_okabe_ito() +
+  scale_color_okabe_ito(order = c(3, 6), breaks = c("ms", "nm"),
                        labels = c("Master", "Non-master")) +
   scale_shape_manual(values = c(18)) +
   scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
@@ -1224,7 +1230,7 @@ Additionally, model comparisons can be made using model stacking or averaging. T
 
 Table \@ref(tab:rel-fit) shows that the PSIS-LOO and WAIC fit indices are very similar for both the partial equivalency and non-fungible models. This is expected, as the PSIS-LOO and WAIC are asymptotically equivalent [@loo_waic]. In the model comparisons, both the PSIS-LOO and WAIC prefer the partial equivalency model, as indicated by the zero in the model comparison (the difference between that model and the preferred model). However, the difference in PSIS-LOO and WAIC of `r sprintf("%0.1f", loo_diff)` between the partial equivalency and non-fungible model is less than 2.5 times the standard error of the difference (`r sprintf("%0.1f", loo_se)`). Thus, using the criteria outlined by @bengio_2004, these models fit equally well. In contrast, Bayesian stacking shows a moderate preference for the partial equivalency. In this comparison, nearly two thirds of the weight is given to the partial equivalency model. Given the totality of these analyses, the partial equivalency model appears to be the model best suited to this simulated data. This data was generated from the partial equivalency model, so this finding is consistent with what is expected.
 
-(ref:rel-fit-foot) *Note:* PSIS-LOO = Pareto smoothed importance sampling leave-one-out cross validation; WAIC = widely applicable information criterion. Parentheses represent the standard error of the index or comparison.
+(ref:rel-fit-foot) *Note:* PSIS-LOO = Pareto smoothed importance sampling leave-one-out cross validation; WAIC = widely applicable information criterion. Parentheses represent the standard error.
 
 ```{r rel-fit}
 relative_fit %>%
