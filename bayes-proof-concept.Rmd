@@ -718,7 +718,7 @@ reduce(ess, full_join, by = "parameter") %>%
     geom_hline(yintercept = chains * 100, linetype = "dashed") +
     expand_limits(y = c(0, (iter - warmup) * chains)) +
     scale_x_discrete(labels = labls) +
-    scale_y_comma() +
+    scale_y_continuous(labels = scales::comma_format()) +
     labs(x = NULL, y = "Effective Sample Size") -> plot
 
 plot %>%
@@ -917,7 +917,7 @@ ggplot() +
             aes(x = raw_score, y = obs, color = "Observed"),
             size = 4, show.legend = FALSE) +
   scale_x_continuous(breaks = seq(0, 20, 1)) +
-  scale_y_comma(expand = waiver()) +
+  scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "Raw Score", y = "Students", color = NULL) -> plot
 
 plot %>%
