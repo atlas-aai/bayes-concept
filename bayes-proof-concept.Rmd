@@ -37,7 +37,7 @@ load_packages <- function(x) {
 vapply(needed_packages, load_packages, logical(1))
 
 extrafont::loadfonts(quiet = TRUE)
-set_theme(font = "Montserrat")
+set_theme(font = "Palatino")
 
 options(knitr.kable.NA = "")
 options(knitr.table.format = "latex")
@@ -308,7 +308,7 @@ bind_rows(
     facet_wrap(~ .variable, nrow = 1, scales = "free", labeller = label_parsed) +
     geom_line() +
     labs(x = "Parameter Value", y = "Density") +
-    theme_atlas_ms(strip_text_size = 20) -> plot
+    theme(strip.text = element_text(size = 20)) -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -331,8 +331,7 @@ The partial equivalency model represents a compromise between the fungible and n
 ggplot(data = tibble(x = c(0, 6)), aes(x = x)) +
   stat_function(fun = dt, n = 500, args = list(df = 3)) +
   geom_segment(x = 0, y = 0, xend = 0, yend = dt(0, df = 3)) +
-  labs(x = "Parameter Value", y = "Density") +
-  theme_atlas_ms() -> plot
+  labs(x = "Parameter Value", y = "Density") -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -633,9 +632,7 @@ A check of convergence evaluates whether the MCMC chain successfully found the h
 gather_draws(pteq, mean_intercept) %>%
   ggplot(aes(x = .iteration, y = .value, color = factor(.chain))) +
     geom_line() +
-    scale_color_okabe_ito() +
-    labs(x = "Iteration", y = expression(lambda[0]), color = "Chain") +
-    theme_atlas_ms() -> plot
+    labs(x = "Iteration", y = expression(lambda[0]), color = "Chain") -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -672,9 +669,7 @@ apply(sims, MARGIN = 3, FUN = Rhat) %>%
     geom_jitter(size = 3, height = 0, width = 0.2, show.legend = FALSE) +
     geom_hline(yintercept = 1.1, linetype = "dashed") +
     scale_x_discrete(labels = labls) +
-    scale_color_okabe_ito() +
-    labs(x = NULL, y = expression(widehat(R))) +
-    theme_atlas_ms() -> plot
+    labs(x = NULL, y = expression(widehat(R))) -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -724,9 +719,7 @@ reduce(ess, full_join, by = "parameter") %>%
     expand_limits(y = c(0, (iter - warmup) * chains)) +
     scale_x_discrete(labels = labls) +
     scale_y_comma() +
-    scale_color_okabe_ito() +
-    labs(x = NULL, y = "Effective Sample Size") +
-    theme_atlas_ms() -> plot
+    labs(x = NULL, y = "Effective Sample Size") -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -800,8 +793,7 @@ ggplot(recovery_sum, aes(x = true, y = est)) +
   geom_point(size = 3) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
   geom_blank(data = facet_limits) +
-  labs(x = "True Value", y = "Estimated Value") +
-  theme_atlas_ms() -> plot
+  labs(x = "True Value", y = "Estimated Value") -> plot
 
 plot %>%
   ggsave2(fig_path(".png")) %>%
@@ -926,9 +918,7 @@ ggplot() +
             size = 4, show.legend = FALSE) +
   scale_x_continuous(breaks = seq(0, 20, 1)) +
   scale_y_comma(expand = waiver()) +
-  scale_color_okabe_ito() +
-  labs(x = "Raw Score", y = "Students", color = NULL) +
-  theme_atlas_ms() -> plot
+  labs(x = "Raw Score", y = "Students", color = NULL) -> plot
 
 plot %>%
   ggsave2(fig_path(".png"), height = 8) %>%
@@ -992,7 +982,7 @@ obs_chisq <- response_matrix %>%
          lab = paste0(expression(italic(ppp)), '~"', sign, '"~', ppp))
 ```
 
-(ref:chisq-stats-cap) $\chi_{obs}^2$ Values and Summaries of $\chi_{rep}^2$ Distributions.
+(ref:chisq-stats-cap) $\chi_{obs}^2$ Values and Summaries of $\chi_{rep}^2$ Distributions
 
 (ref:chisq-stat-foot) *ppp* = posterior predictive *p*-value.
 
@@ -1036,10 +1026,7 @@ ggplot() +
   #           vjust = 0, hjust = 0, parse = TRUE) +
   expand_limits(x = c(0, 65)) +
   scale_x_continuous(breaks = seq(0, 70, 10))  +
-  scale_fill_okabe_ito() +
-  scale_color_okabe_ito() +
   labs(x = expression(chi[italic(rep)]^2), y = "Posterior Density", fill = NULL) +
-  theme_atlas_ms() +
   guides(color = "none") -> plot
 
 plot %>%
@@ -1093,9 +1080,7 @@ ggplot() +
              shape = 18, size = 3) +
   expand_limits(y = c(0, 1)) +
   scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
-  scale_color_okabe_ito() +
   labs(x = "Item", y = expression(Item~~italic(p)*-value), color = NULL) +
-  theme_atlas_ms() +
   theme(panel.grid.minor.x = element_blank()) +
   guides(color = guide_legend(override.aes = list(shape = 15))) -> plot
 
@@ -1135,14 +1120,12 @@ ggplot(cond_pval_summary) +
             alpha = 0.7, size = 1) +
   geom_point(aes(x = item_id, y = obs, shape = "Observed",
                  color = class), size = 3) +
-  scale_fill_okabe_ito() +
-  scale_color_okabe_ito(order = c(3, 6), breaks = c("ms", "nm"),
+  scale_color_okabeito(order = c(3, 6), breaks = c("ms", "nm"),
                        labels = c("Master", "Non-master")) +
   scale_shape_manual(values = c(18)) +
   scale_x_continuous(breaks = seq(1, nrow(items), 1)) +
   labs(x = "Item", y = expression(Item~~italic(p)*-value),
        color = NULL, fill = NULL, shape = NULL) +
-  theme_atlas_ms() +
   theme(panel.grid.minor.x = element_blank()) +
   guides(color = guide_legend(order = 3, override.aes = list(alpha = 0)),
          shape = guide_legend(order = 2),
@@ -1240,7 +1223,7 @@ relative_fit %>%
   kable(align = c("l", "c", "c", "r", "r", "c"), booktabs = TRUE, linesep = "",
         col.names = c("Model", "PSIS-LOO", "WAIC", "PSIS-LOO", "WAIC",
                       "Bayesian Stacking"),
-        caption = "Relative Fit Indices and Model Comparisons.") %>%
+        caption = "Relative Fit Indices and Model Comparisons") %>%
   kable_styling(latex_options = "HOLD_position", position = "left") %>%
   row_spec(0, bold = TRUE, align = "c") %>%
   add_header_above(c(" " = 1, "Fit Indices" = 2, "Model Comparisons" = 3),
@@ -1260,7 +1243,7 @@ Additionally, the Bayesian framework facilitates the evaluation of absolute mode
 
 When there are competing models that show adequate absolute model fit, direct comparisons can be made using information criteria. Although using information criteria to compare models is not exclusive to a Bayesian estimation process [e.g., @sen_2017], some indices, such as the PSIS-LOO, are. In this document, the PSIS-LOO and WAIC were used, as they are integrated into the *Stan* ecosystem via the **loo** *R* package [@R-loo] and perform well under a variety of conditions [@loo_waic]. However, as discussed for posterior predictive model checks, practitioners could use other information criteria for their comparisons such as the Akaike information criterion [AIC; @aic], Bayesian information criterion [BIC; @bic], or deviance information criterion [DIC; @dic]. 
 
-In summary, this document provides a practical guide to estimating and evaluating DCMs in applied settings. Although the models described represent a simplified one-attribute use case, they are generalizable to additional attributes. For example, @ncme_maps used an expanded version of this framework for evaluating map structures and attribute hierarchies in multivariate extensions of these models. Future work will focus on further developing and improving the Bayesian framework for estimating and evaluating DCMs, as well as illustrating how the framework can be implemented in applied and operational settings.
+In summary, this document provides a practical guide to estimating and evaluating DCMs in applied settings. Although the models described represent a simplified one-attribute use case, they are generalizable to additional attributes. For example, @ncme_maps used an expanded version of this framework for evaluating map structures and attribute hierarchies in multivariate extensions of these models. Future work will focus on further developing and improving the Bayesian framework for estimating and evaluating DCMs, including extending the methods for evaluating item-level misfit, as well as illustrating how the framework can be implemented in applied and operational settings.
 
 
 \newpage
