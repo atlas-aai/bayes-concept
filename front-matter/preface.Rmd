@@ -1,6 +1,6 @@
 \newpage
 
-\begin{center}\textbf{All rights reserved.} Any or all portions of this document may be reproduced and distributed without prior permission provided the source is cited as:\end{center}
+\begin{center}Copyright \copyright\ 2019 University of Kansas Center for Research. All rights reserved. Any or all portions of this document may be reproduced and distributed without prior permission provided the source is cited as:\end{center}
 
 \setlength{\parindent}{-27pt}
 \setlength{\leftskip}{27pt}
