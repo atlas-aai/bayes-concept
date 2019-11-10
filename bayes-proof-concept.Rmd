@@ -213,7 +213,7 @@ StatBin2 <- ggproto(
 
 # Executive Summary {-}
 
-Diagnostic assessments measure the knowledge, skills, and understandings of students with the most significant cognitive disabilities. Results are reported as a mastery profile, indicating which knowledge, skills, and understandings the student has mastered and which ones may need more instruction. These mastery decisions are based on probabilities of mastery derived from diagnostic classification models (DCMs).
+Diagnostic assessments measure the knowledge, skills, and understandings of students at a smaller and more actionable grain size than traditional scale-score assessments. Results of diagnostic assessments are reported as a mastery profile, indicating which knowledge, skills, and understandings the student has mastered and which ones may need more instruction. These mastery decisions are based on probabilities of mastery derived from diagnostic classification models (DCMs).
 
 This report outlines a Bayesian framework for the estimation and evaluation of DCMs. Specifically, this report describes:
 
