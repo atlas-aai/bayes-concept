@@ -40,6 +40,7 @@ set_theme(font = "Palatino")
 
 options(knitr.kable.NA = "")
 options(knitr.table.format = "latex")
+knitr::opts_chunk$set(cache = TRUE)
 
 if (!dir_exists(here("data", "estimated-models"))) {
   dir_create(here("data", "estimated-models"))
