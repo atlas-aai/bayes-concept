@@ -11,15 +11,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Bayesian Psychometrics for Dynamic Learning Maps: A Proof of Concept
+# Bayesian psychometrics for diagnostic assessments: A proof of concept
 
-This repository contains the source code for the Technical Report, *Bayesian psychometrics for Dynamic Learning Maps: A proof of concept*. The report is powered by [**bookdown**](https://bookdown.org), which makes it easy to turn R markdown files into PDF.
+This repository contains the source code for the Technical Report, *Bayesian psychometrics diagnostic assessments: A proof of concept*. The report is powered by [**bookdown**](https://bookdown.org), which makes it easy to turn R markdown files into PDF.
+
+The report can be found [here](https://dynamiclearningmaps.org/sites/default/files/documents/publication/Bayes_Proof_Concept_2019.pdf).
 
 This report was built with:
 
 ```{r}
-devtools::session_info(c("ratlas", "knitr", "english", "kableExtra",
-                         "tidyverse", "rstan", "loo", "tidybayes", "here",
-                         "glue", "fs"))
+devtools::session_info(c("ratlas", "knitr", "english", "kableExtra", "tidyverse",
+                         "rstan", "loo", "tidybayes",
+                         "here", "glue", "fs"))
 ```
 
