@@ -13,6 +13,10 @@ knitr::opts_chunk$set(
 
 # Bayesian psychometrics for diagnostic assessments: A proof of concept
 
+<!-- badges: start -->
+[![DOI](https://img.shields.io/badge/DOI-10.35542%2Fosf.io%2Fjzqs8-brightgreen)](https://doi.org/10.35542/osf.io/jzqs8)
+<!-- badges: end -->
+
 This repository contains the source code for the Technical Report, *Bayesian psychometrics diagnostic assessments: A proof of concept*. The report is powered by [**bookdown**](https://bookdown.org), which makes it easy to turn R markdown files into PDF.
 
 The report can be found [here](https://dynamiclearningmaps.org/sites/default/files/documents/publication/Bayes_Proof_Concept_2019.pdf).
